@@ -175,8 +175,8 @@ export default function App() {
           *,
           category:categories(*),
           field:fields(*),
-          team_home:teams(*),
-          team_away:teams(*)
+          team_home:teams!team_home_id(*),
+          team_away:teams!team_away_id(*)
         `),
       ]);
 
@@ -235,8 +235,8 @@ export default function App() {
           *,
           category:categories(*),
           field:fields(*),
-          team_home:teams(*),
-          team_away:teams(*)
+          team_home:teams!team_home_id(*),
+          team_away:teams!team_away_id(*)
         `)
         .then(({ data }) => {
           if (data) setMatches(data as unknown as MatchWithDetails[]);

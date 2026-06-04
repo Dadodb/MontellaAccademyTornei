@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Redirect rule essenziale per React SPA:
+# Tutte le richieste vengono instradate a index.html
+# così il routing lato client funziona correttamente.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
