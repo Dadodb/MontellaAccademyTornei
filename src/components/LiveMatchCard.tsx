@@ -1,6 +1,7 @@
 import React from 'react';
 import type { MatchWithDetails } from '../types';
 import { Plus, Minus, Tv } from 'lucide-react';
+import { getCategoryColor } from '../utils/categoryColors';
 
 interface LiveMatchCardProps {
   match: MatchWithDetails;
@@ -30,18 +31,24 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({
   return (
     <div className="relative overflow-hidden rounded-2xl bg-white shadow-md border border-slate-100 dark:bg-slate-900 dark:border-slate-800 transition-all duration-300 hover:shadow-lg">
       
-      {/* Sunlight optimization: high contrast colored top bar */}
-      <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 px-4 py-2 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
-        <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-          {match.category?.name || 'Categoria'}
-        </span>
-        
-        {/* Pulsing Live Badge */}
-        <div className="flex items-center gap-1.5 rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-black tracking-wider text-white shadow-sm shadow-rose-500/20">
-          <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
-          <span>LIVE</span>
-        </div>
-      </div>
+      {/* Colored top bar per categoria */}
+      {(() => {
+        const color = getCategoryColor(match.category_id);
+        return (
+          <div
+            className={`px-4 py-2 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 ${color.bg} ${color.darkBg}`}
+          >
+            <span className={`text-[11px] font-extrabold uppercase tracking-wider ${color.text} ${color.darkText}`}>
+              {match.category?.name || 'Categoria'}
+            </span>
+            {/* Pulsing Live Badge */}
+            <div className="flex items-center gap-1.5 rounded-full bg-rose-500 px-2 py-0.5 text-[9px] font-black tracking-wider text-white shadow-sm shadow-rose-500/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+              <span>LIVE</span>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="p-4 sm:p-5">
         {/* Teams and Score Grid */}

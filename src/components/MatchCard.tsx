@@ -1,6 +1,7 @@
 import React from 'react';
 import type { MatchWithDetails, MatchStatus } from '../types';
 import { Tv, Flame, CheckCircle, Clock } from 'lucide-react';
+import { getCategoryColor } from '../utils/categoryColors';
 
 interface MatchCardProps {
   match: MatchWithDetails;
@@ -117,10 +118,15 @@ export const MatchCard: React.FC<MatchCardProps> = ({
       </div>
 
       <div className="flex items-center justify-between border-t border-slate-50 pt-2 dark:border-slate-800/30">
-        {/* Category Tag */}
-        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-          {match.category?.name}
-        </span>
+        {/* Category Tag with color */}
+        {match.category && (() => {
+          const color = getCategoryColor(match.category_id);
+          return (
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color.bg} ${color.text} ${color.darkBg} ${color.darkText}`}>
+              {match.category.name}
+            </span>
+          );
+        })()}
 
         {/* Operator Controls inside Calendar */}
         {isAdmin && onUpdateStatus && (

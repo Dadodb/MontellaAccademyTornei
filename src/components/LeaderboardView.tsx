@@ -3,6 +3,7 @@ import type { Category, Team, Match, TeamStanding } from '../types';
 import { calculateStandings, findPerfectTies } from '../utils/standings';
 import { LeaderboardTable } from './LeaderboardTable';
 import { Trophy, HelpCircle, X, ShieldAlert } from 'lucide-react';
+import { getCategoryColor } from '../utils/categoryColors';
 
 interface LeaderboardViewProps {
   categories: Category[];
@@ -72,19 +73,23 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
           Seleziona Categoria
         </span>
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
-                selectedCategory === cat.id
-                  ? 'bg-emerald-600 text-white dark:bg-emerald-500'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const color = getCategoryColor(cat.id);
+            const isActive = selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all whitespace-nowrap ${
+                  isActive
+                    ? `${color.bg} ${color.text} ${color.darkBg} ${color.darkText} ring-2 ${color.border}`
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                {cat.name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -108,7 +113,10 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 return (
                   <div key={groupName} className="space-y-3">
                     <div className="flex items-center justify-between px-1">
-                      <h3 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <h3
+                        className="text-[11px] font-bold uppercase tracking-wider"
+                        style={{ color: getCategoryColor(selectedCategory!).hex }}
+                      >
                         {isMultiGroup ? `Girone ${groupName}` : `Classifica ${activeCategory?.name}`}
                       </h3>
                       {tiedTeamIds.size > 0 && (

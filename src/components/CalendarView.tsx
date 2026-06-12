@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Category, Field, MatchWithDetails, MatchStatus } from '../types';
 import { MatchCard } from './MatchCard';
 import { SlidersHorizontal, Info } from 'lucide-react';
+import { getCategoryColor } from '../utils/categoryColors';
 
 interface CalendarViewProps {
   categories: Category[];
@@ -59,19 +60,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             >
               Tutte
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`rounded-full px-3.5 py-1 text-xs font-bold transition-all whitespace-nowrap ${
-                  selectedCategory === cat.id
-                    ? 'bg-emerald-600 text-white dark:bg-emerald-500'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
+            {categories.map((cat) => {
+              const color = getCategoryColor(cat.id);
+              const isActive = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`rounded-full px-3.5 py-1 text-xs font-bold transition-all whitespace-nowrap ${
+                    isActive
+                      ? `${color.bg} ${color.text} ${color.darkBg} ${color.darkText} ring-2 ${color.border}`
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
           </div>
         </div>
 
