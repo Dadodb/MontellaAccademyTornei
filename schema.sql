@@ -71,6 +71,12 @@ CREATE POLICY "Allow public inserts for teams" ON teams FOR INSERT WITH CHECK (t
 CREATE POLICY "Allow public inserts for categories" ON categories FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public inserts for fields" ON fields FOR INSERT WITH CHECK (true);
 
+-- Delete Policies (Required for Admin actions)
+CREATE POLICY "Allow public deletes for categories" ON categories FOR DELETE USING (true);
+CREATE POLICY "Allow public deletes for fields" ON fields FOR DELETE USING (true);
+CREATE POLICY "Allow public deletes for teams" ON teams FOR DELETE USING (true);
+CREATE POLICY "Allow public deletes for matches" ON matches FOR DELETE USING (true);
+
 -- 8. Add Tables to Supabase Realtime Publication
 -- Note: Supabase project default publication is 'supabase_realtime'.
 -- We check and add the tables to this publication.
