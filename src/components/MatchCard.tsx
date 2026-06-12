@@ -81,7 +81,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 ? 'text-slate-400 dark:text-slate-500' 
                 : 'font-medium text-slate-800 dark:text-slate-200'
           }`}>
-            {match.team_home?.name}
+            {match.team_home?.name || match.placeholder_home || 'TBA'}
           </p>
         </div>
 
@@ -111,7 +111,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
                 ? 'text-slate-400 dark:text-slate-500' 
                 : 'font-medium text-slate-800 dark:text-slate-200'
           }`}>
-            {match.team_away?.name}
+            {match.team_away?.name || match.placeholder_away || 'TBA'}
           </p>
         </div>
       </div>

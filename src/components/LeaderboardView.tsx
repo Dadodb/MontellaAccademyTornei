@@ -35,9 +35,17 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   const categoryTeams = teams.filter((t) => t.category_id === selectedCategory);
   const categoryMatches = matches.filter((m) => m.category_id === selectedCategory);
 
-  // Compute standings
-  const standings = selectedCategory ? calculateStandings(categoryMatches, categoryTeams) : [];
-  const tiedTeamIds = findPerfectTies(standings);
+  // Group teams by group_name
+  const groupedTeams: Record<string, Team[]> = {};
+  if (activeCategory) {
+    categoryTeams.forEach(t => {
+      const g = t.group_name || 'A';
+      if (!groupedTeams[g]) groupedTeams[g] = [];
+      groupedTeams[g].push(t);
+    });
+  }
+  
+  const groups = Object.keys(groupedTeams).sort();
 
   const handleResolveTie = async (winningTeamId: string) => {
     if (!tieBreakerTeams) return;
@@ -83,26 +91,47 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
       {/* Standings Table container */}
       {selectedCategory ? (
         <div className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Classifica {activeCategory?.name}
-            </h3>
-            
-            {tiedTeamIds.size > 0 && (
-              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 animate-pulse flex items-center gap-1">
-                <HelpCircle className="h-3.5 w-3.5" />
-                Pareggio da Risolvere
-              </span>
-            )}
-          </div>
+          {groups.length > 0 ? (
+            <div className="space-y-6">
+              {groups.map(groupName => {
+                const groupTeams = groupedTeams[groupName];
+                const groupMatches = categoryMatches.filter(m => 
+                  // Include match if BOTH teams are in this group (for playoffs this might need adjustment later)
+                  groupTeams.some(t => t.id === m.team_home_id) && 
+                  groupTeams.some(t => t.id === m.team_away_id)
+                );
+                
+                const standings = calculateStandings(groupMatches, groupTeams);
+                const tiedTeamIds = findPerfectTies(standings);
+                const isMultiGroup = (activeCategory?.groups_count || 1) > 1;
 
-          {categoryTeams.length > 0 ? (
-            <LeaderboardTable
-              standings={standings}
-              tiedTeamIds={tiedTeamIds}
-              isAdmin={isAdmin}
-              onOpenTieBreaker={(teamA, teamB) => setTieBreakerTeams({ teamA, teamB })}
-            />
+                return (
+                  <div key={groupName} className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                      <h3 className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        {isMultiGroup ? `Girone ${groupName}` : `Classifica ${activeCategory?.name}`}
+                      </h3>
+                      {tiedTeamIds.size > 0 && (
+                        <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 animate-pulse flex items-center gap-1">
+                          <HelpCircle className="h-3.5 w-3.5" />
+                          Pareggio da Risolvere
+                        </span>
+                      )}
+                    </div>
+                    {groupTeams.length > 0 ? (
+                      <LeaderboardTable
+                        standings={standings}
+                        tiedTeamIds={tiedTeamIds}
+                        isAdmin={isAdmin}
+                        onOpenTieBreaker={(teamA, teamB) => setTieBreakerTeams({ teamA, teamB })}
+                      />
+                    ) : (
+                      <div className="text-center py-4 text-xs text-slate-500">Nessuna squadra nel Girone {groupName}</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center rounded-2xl bg-white border border-slate-100 py-12 px-4 text-center dark:bg-slate-900 dark:border-slate-800/80 sunlight-card">
               <Trophy className="h-6 w-6 text-slate-300 dark:text-slate-700 mb-2" />

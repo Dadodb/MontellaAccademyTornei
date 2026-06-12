@@ -7,13 +7,14 @@ import { TabNavigation } from './components/TabNavigation';
 import { LiveDashboard } from './components/LiveDashboard';
 import { CalendarView } from './components/CalendarView';
 import { LeaderboardView } from './components/LeaderboardView';
+import { AdminDashboard } from './components/AdminDashboard';
 import { Loader2, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 // --- MOCK DATA FOR DEMO MODE ---
 const MOCK_CATEGORIES: Category[] = [
-  { id: 'cat-1', name: 'Primi Calci 2018' },
-  { id: 'cat-2', name: 'Pulcini 2015' },
-  { id: 'cat-3', name: 'Esordienti 2013' },
+  { id: 'cat-1', name: 'Primi Calci 2018', groups_count: 1 },
+  { id: 'cat-2', name: 'Pulcini 2015', groups_count: 1 },
+  { id: 'cat-3', name: 'Esordienti 2013', groups_count: 1 },
 ];
 
 const MOCK_FIELDS: Field[] = [
@@ -24,20 +25,20 @@ const MOCK_FIELDS: Field[] = [
 
 const MOCK_TEAMS: Team[] = [
   // Primi Calci 2018
-  { id: 't-1', name: 'Montella Calcio A', category_id: 'cat-1', manual_rank_priority: 0 },
-  { id: 't-2', name: 'Virtus Avellino', category_id: 'cat-1', manual_rank_priority: 0 },
-  { id: 't-3', name: 'Lioni FC', category_id: 'cat-1', manual_rank_priority: 0 },
-  { id: 't-4', name: 'Bagnoli Calcio', category_id: 'cat-1', manual_rank_priority: 0 },
+  { id: 't-1', name: 'Montella Calcio A', category_id: 'cat-1', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-2', name: 'Virtus Avellino', category_id: 'cat-1', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-3', name: 'Lioni FC', category_id: 'cat-1', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-4', name: 'Bagnoli Calcio', category_id: 'cat-1', group_name: 'A', manual_rank_priority: 0 },
   // Pulcini 2015
-  { id: 't-5', name: 'Montella Calcio B', category_id: 'cat-2', manual_rank_priority: 0 },
-  { id: 't-6', name: 'Nusco Academy', category_id: 'cat-2', manual_rank_priority: 0 },
-  { id: 't-7', name: 'Solofra Calcio', category_id: 'cat-2', manual_rank_priority: 0 },
-  { id: 't-8', name: 'Atripalda FC', category_id: 'cat-2', manual_rank_priority: 0 },
+  { id: 't-5', name: 'Montella Calcio B', category_id: 'cat-2', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-6', name: 'Nusco Academy', category_id: 'cat-2', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-7', name: 'Solofra Calcio', category_id: 'cat-2', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-8', name: 'Atripalda FC', category_id: 'cat-2', group_name: 'A', manual_rank_priority: 0 },
   // Esordienti 2013
-  { id: 't-9', name: 'Montella Calcio C', category_id: 'cat-3', manual_rank_priority: 0 },
-  { id: 't-10', name: 'Torella Calcio', category_id: 'cat-3', manual_rank_priority: 0 },
-  { id: 't-11', name: 'Volturara FC', category_id: 'cat-3', manual_rank_priority: 0 },
-  { id: 't-12', name: 'Calitri Calcio', category_id: 'cat-3', manual_rank_priority: 0 },
+  { id: 't-9', name: 'Montella Calcio C', category_id: 'cat-3', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-10', name: 'Torella Calcio', category_id: 'cat-3', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-11', name: 'Volturara FC', category_id: 'cat-3', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-12', name: 'Calitri Calcio', category_id: 'cat-3', group_name: 'A', manual_rank_priority: 0 },
 ];
 
 const now = new Date();
@@ -116,10 +117,13 @@ const MOCK_MATCHES_RAW = [
 function expandMockMatch(match: typeof MOCK_MATCHES_RAW[0]): MatchWithDetails {
   return {
     ...match,
+    placeholder_home: null,
+    placeholder_away: null,
+    stage: 'group',
     category: MOCK_CATEGORIES.find((c) => c.id === match.category_id)!,
     field: MOCK_FIELDS.find((f) => f.id === match.field_id)!,
-    team_home: MOCK_TEAMS.find((t) => t.id === match.team_home_id)!,
-    team_away: MOCK_TEAMS.find((t) => t.id === match.team_away_id)!,
+    team_home: MOCK_TEAMS.find((t) => t.id === match.team_home_id) || null,
+    team_away: MOCK_TEAMS.find((t) => t.id === match.team_away_id) || null,
   };
 }
 
@@ -318,6 +322,171 @@ export default function App() {
     handleUpdateStatus(matchId, 'finished');
   };
 
+  const handleGenerateCalendar = async (
+    categoryId: string,
+    startTime: string,
+    matchDuration: number,
+    breakDuration: number,
+    generatePlayoffs: boolean
+  ) => {
+    try {
+      const categoryTeams = teams.filter(t => t.category_id === categoryId);
+      const catMatches = matches.filter(m => m.category_id === categoryId);
+      
+      // Group teams by group
+      const groups: Record<string, Team[]> = {};
+      categoryTeams.forEach(t => {
+        const g = t.group_name || 'A';
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(t);
+      });
+
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      let currentTime = new Date();
+      currentTime.setHours(startHour, startMin, 0, 0);
+
+      const newMatchesRaw = [];
+
+      // Round robin per group
+      Object.keys(groups).forEach(groupName => {
+        const groupTeams = groups[groupName];
+        for (let i = 0; i < groupTeams.length; i++) {
+          for (let j = i + 1; j < groupTeams.length; j++) {
+            // Check if match already exists
+            const exists = catMatches.some(m => 
+              (m.team_home_id === groupTeams[i].id && m.team_away_id === groupTeams[j].id) ||
+              (m.team_home_id === groupTeams[j].id && m.team_away_id === groupTeams[i].id)
+            );
+            if (!exists) {
+              newMatchesRaw.push({
+                category_id: categoryId,
+                field_id: fields[0]?.id || null,
+                team_home_id: groupTeams[i].id,
+                team_away_id: groupTeams[j].id,
+                placeholder_home: null,
+                placeholder_away: null,
+                stage: 'group',
+                score_home: 0,
+                score_away: 0,
+                scheduled_time: currentTime.toISOString(),
+                status: 'scheduled'
+              });
+              currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+            }
+          }
+        }
+      });
+
+      // Add Playoffs if requested
+      if (generatePlayoffs) {
+        const groupKeys = Object.keys(groups).sort();
+        if (groupKeys.length === 2) {
+          // Semifinals
+          newMatchesRaw.push({
+            category_id: categoryId,
+            field_id: fields[0]?.id || null,
+            team_home_id: null,
+            team_away_id: null,
+            placeholder_home: `1° Girone ${groupKeys[0]}`,
+            placeholder_away: `2° Girone ${groupKeys[1]}`,
+            stage: 'semi',
+            score_home: 0,
+            score_away: 0,
+            scheduled_time: currentTime.toISOString(),
+            status: 'scheduled'
+          });
+          currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+          
+          newMatchesRaw.push({
+            category_id: categoryId,
+            field_id: fields[0]?.id || null,
+            team_home_id: null,
+            team_away_id: null,
+            placeholder_home: `1° Girone ${groupKeys[1]}`,
+            placeholder_away: `2° Girone ${groupKeys[0]}`,
+            stage: 'semi',
+            score_home: 0,
+            score_away: 0,
+            scheduled_time: currentTime.toISOString(),
+            status: 'scheduled'
+          });
+          currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+        }
+        
+        // Final
+        newMatchesRaw.push({
+          category_id: categoryId,
+          field_id: fields[0]?.id || null,
+          team_home_id: null,
+          team_away_id: null,
+          placeholder_home: groupKeys.length === 2 ? `Vincente Semifinale 1` : `1° Classificato`,
+          placeholder_away: groupKeys.length === 2 ? `Vincente Semifinale 2` : `2° Classificato`,
+          stage: 'final',
+          score_home: 0,
+          score_away: 0,
+          scheduled_time: currentTime.toISOString(),
+          status: 'scheduled'
+        });
+      }
+
+      if (isMockMode) {
+        // Just mock it by reloading (won't actually save, but avoids error)
+        alert('Calendario generato (Modalità Demo - i dati non vengono salvati). Ricarica per azzerare.');
+        return;
+      }
+
+      if (newMatchesRaw.length > 0) {
+        const { error } = await supabase
+          .from('matches')
+          .insert(newMatchesRaw);
+        
+        if (error) throw error;
+        
+        loadInitialData();
+      }
+
+    } catch (error) {
+      console.error('Error generating calendar:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteAllMatches = async () => {
+    if (isMockMode) { alert("Modalità Demo: I dati non vengono realmente cancellati."); setMatches([]); return; }
+    try {
+      const { error } = await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw error;
+      loadInitialData();
+    } catch (error) { throw error; }
+  };
+
+  const handleDeleteAllTeams = async () => {
+    if (isMockMode) { alert("Modalità Demo: I dati non vengono realmente cancellati."); setTeams([]); return; }
+    try {
+      const { error } = await supabase.from('teams').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw error;
+      loadInitialData();
+    } catch (error) { throw error; }
+  };
+
+  const handleDeleteAllFields = async () => {
+    if (isMockMode) { alert("Modalità Demo: I dati non vengono realmente cancellati."); setFields([]); return; }
+    try {
+      const { error } = await supabase.from('fields').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw error;
+      loadInitialData();
+    } catch (error) { throw error; }
+  };
+
+  const handleDeleteAllCategories = async () => {
+    if (isMockMode) { alert("Modalità Demo: I dati non vengono realmente cancellati."); setCategories([]); return; }
+    try {
+      const { error } = await supabase.from('categories').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw error;
+      loadInitialData();
+    } catch (error) { throw error; }
+  };
+
   const handleSetTeamPriority = async (teamId: string, priority: number) => {
     if (isMockMode) {
       setTeams((prev) =>
@@ -337,6 +506,137 @@ export default function App() {
     }
   };
 
+  const handleAddCategory = async (name: string, groupsCount: number) => {
+    if (isMockMode) {
+      const newCategory = { id: `c-${Date.now()}`, name, groups_count: groupsCount };
+      setCategories((prev) => [...prev, newCategory]);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert([{ name, groups_count: groupsCount }])
+        .select()
+        .single();
+      if (error) throw error;
+      setCategories([...categories, data]);
+    } catch (error) {
+      console.error('Error adding category:', error);
+      throw error;
+    }
+  };
+
+  const handleUpdateCategory = async (id: string, name: string, groupsCount: number) => {
+    if (isMockMode) {
+      setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, name, groups_count: groupsCount } : c)));
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .update({ name, groups_count: groupsCount })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      setCategories(categories.map(c => c.id === id ? data : c));
+    } catch (error) {
+      console.error('Error updating category:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (isMockMode) {
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+      return;
+    }
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (error) throw error;
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  const handleAddField = async (name: string) => {
+    if (isMockMode) {
+      const newField = { id: `f-${Date.now()}`, name };
+      setFields((prev) => [...prev, newField]);
+      return;
+    }
+    const { data, error } = await supabase.from('fields').insert([{ name }]).select().single();
+    if (error) throw error;
+    setFields((prev) => [...prev, data]);
+  };
+
+  const handleUpdateField = async (id: string, name: string) => {
+    if (isMockMode) {
+      setFields((prev) => prev.map((f) => (f.id === id ? { ...f, name } : f)));
+      return;
+    }
+    const { error } = await supabase.from('fields').update({ name }).eq('id', id);
+    if (error) throw error;
+    setFields((prev) => prev.map((f) => (f.id === id ? { ...f, name } : f)));
+  };
+
+  const handleDeleteField = async (id: string) => {
+    if (isMockMode) {
+      setFields((prev) => prev.filter((f) => f.id !== id));
+      return;
+    }
+    const { error } = await supabase.from('fields').delete().eq('id', id);
+    if (error) throw error;
+    setFields((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const handleAddTeam = async (name: string, categoryId: string, groupName: string) => {
+    if (isMockMode) {
+      const newTeam = { id: `t-${Date.now()}`, name, category_id: categoryId, group_name: groupName, manual_rank_priority: 0 };
+      setTeams((prev) => [...prev, newTeam]);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .insert([{ name, category_id: categoryId, group_name: groupName, manual_rank_priority: 0 }])
+        .select()
+        .single();
+      if (error) throw error;
+      setTeams([...teams, data]);
+    } catch (error) {
+      console.error('Error adding team:', error);
+      throw error;
+    }
+  };
+
+  const handleUpdateTeam = async (id: string, name: string, categoryId: string, groupName: string) => {
+    if (isMockMode) {
+      setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, name, category_id: categoryId, group_name: groupName } : t)));
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .update({ name, category_id: categoryId, group_name: groupName })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      setTeams(teams.map(t => t.id === id ? data : t));
+    } catch (error) {
+      console.error('Error updating team:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteTeam = async (id: string) => {
+    if (isMockMode) {
+      setTeams((prev) => prev.filter((t) => t.id !== id));
+      return;
+    }
+    const { error } = await supabase.from('teams').delete().eq('id', id);
+    if (error) throw error;
+    setTeams((prev) => prev.filter((t) => t.id !== id));
+  };
+
   const liveMatchesCount = matches.filter((m) => m.status === 'live').length;
 
   return (
@@ -351,11 +651,11 @@ export default function App() {
         setIsAdmin={setIsAdmin}
       />
 
-      {/* Tab Switcher */}
       <TabNavigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         liveCount={liveMatchesCount}
+        isAdmin={isAdmin}
       />
 
       {/* Main Content Area */}
@@ -419,6 +719,29 @@ export default function App() {
                 matches={matches}
                 isAdmin={isAdmin}
                 onSetTeamPriority={handleSetTeamPriority}
+              />
+            )}
+
+            {activeTab === 'admin' && isAdmin && (
+              <AdminDashboard
+                categories={categories}
+                teams={teams}
+                fields={fields}
+                matches={matches}
+                onAddCategory={handleAddCategory}
+                onUpdateCategory={handleUpdateCategory}
+                onDeleteCategory={handleDeleteCategory}
+                onAddField={handleAddField}
+                onUpdateField={handleUpdateField}
+                onDeleteField={handleDeleteField}
+                onAddTeam={handleAddTeam}
+                onUpdateTeam={handleUpdateTeam}
+                onDeleteTeam={handleDeleteTeam}
+                onGenerateCalendar={handleGenerateCalendar}
+                onDeleteAllMatches={handleDeleteAllMatches}
+                onDeleteAllTeams={handleDeleteAllTeams}
+                onDeleteAllFields={handleDeleteAllFields}
+                onDeleteAllCategories={handleDeleteAllCategories}
               />
             )}
           </>

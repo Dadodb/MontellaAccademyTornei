@@ -1,18 +1,20 @@
 import React from 'react';
-import { Activity, Calendar, Trophy } from 'lucide-react';
+import { Activity, Calendar, Trophy, Settings } from 'lucide-react';
 
-export type TabId = 'live' | 'calendar' | 'standings';
+export type TabId = 'live' | 'calendar' | 'standings' | 'admin';
 
 interface TabNavigationProps {
   activeTab: TabId;
   setActiveTab: (tab: TabId) => void;
   liveCount: number; // Show number of active live matches in a badge!
+  isAdmin?: boolean;
 }
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({
   activeTab,
   setActiveTab,
   liveCount,
+  isAdmin,
 }) => {
   const tabs = [
     {
@@ -32,6 +34,14 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
       icon: Trophy,
     },
   ];
+
+  if (isAdmin) {
+    tabs.push({
+      id: 'admin' as TabId,
+      label: 'Gestione',
+      icon: Settings,
+    });
+  }
 
   return (
     <div className="sticky top-16 z-40 w-full bg-slate-50/95 backdrop-blur-sm dark:bg-slate-950/95 py-2 px-4 border-b border-slate-200/50 dark:border-slate-800/50">
