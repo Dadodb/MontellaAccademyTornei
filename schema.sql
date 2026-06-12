@@ -64,6 +64,8 @@ CREATE POLICY "Allow public read access for matches" ON matches FOR SELECT USING
 -- Update Policies (Publicly allowed for demo/operator operations without Auth for this MVP)
 CREATE POLICY "Allow public updates for teams" ON teams FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public updates for matches" ON matches FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public updates for categories" ON categories FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public updates for fields" ON fields FOR UPDATE USING (true) WITH CHECK (true);
 
 -- Delete and Insert (Optional, uncomment if needed for setup, otherwise handled via Supabase dashboard)
 CREATE POLICY "Allow public inserts for matches" ON matches FOR INSERT WITH CHECK (true);
