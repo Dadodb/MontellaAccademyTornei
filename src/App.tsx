@@ -323,49 +323,46 @@ export default function App() {
   };
 
   const handleGenerateCalendar = async (
-    categoryId: string,
     startTime: string,
     matchDuration: number,
     breakDuration: number,
     generatePlayoffs: boolean
   ) => {
     try {
-      const categoryTeams = teams.filter(t => t.category_id === categoryId);
-      const catMatches = matches.filter(m => m.category_id === categoryId);
-      
-      // Group teams by group
-      const groups: Record<string, Team[]> = {};
-      categoryTeams.forEach(t => {
-        const g = t.group_name || 'A';
-        if (!groups[g]) groups[g] = [];
-        groups[g].push(t);
-      });
-
       const [startHour, startMin] = startTime.split(':').map(Number);
       let currentTime = new Date();
       currentTime.setHours(startHour, startMin, 0, 0);
 
       const newMatchesRaw: any[] = [];
-      const matchesToSchedule: { home: string; away: string }[] = [];
+      const matchesToSchedule: { category: string; home: string; away: string }[] = [];
 
-      // Generate all matchups
-      Object.keys(groups).forEach(groupName => {
-        const groupTeams = groups[groupName];
-        for (let i = 0; i < groupTeams.length; i++) {
-          for (let j = i + 1; j < groupTeams.length; j++) {
-            // Check if match already exists
-            const exists = catMatches.some(m => 
-              (m.team_home_id === groupTeams[i].id && m.team_away_id === groupTeams[j].id) ||
-              (m.team_home_id === groupTeams[j].id && m.team_away_id === groupTeams[i].id)
-            );
-            if (!exists) {
-              matchesToSchedule.push({ home: groupTeams[i].id, away: groupTeams[j].id });
+      // 1. Generate all matchups across ALL categories
+      categories.forEach(cat => {
+        const categoryTeams = teams.filter(t => t.category_id === cat.id);
+        const groups: Record<string, Team[]> = {};
+        categoryTeams.forEach(t => {
+          const g = t.group_name || 'A';
+          if (!groups[g]) groups[g] = [];
+          groups[g].push(t);
+        });
+
+        Object.keys(groups).forEach(groupName => {
+          const groupTeams = groups[groupName];
+          for (let i = 0; i < groupTeams.length; i++) {
+            for (let j = i + 1; j < groupTeams.length; j++) {
+              const exists = matches.some(m => 
+                (m.team_home_id === groupTeams[i].id && m.team_away_id === groupTeams[j].id) ||
+                (m.team_home_id === groupTeams[j].id && m.team_away_id === groupTeams[i].id)
+              );
+              if (!exists) {
+                matchesToSchedule.push({ category: cat.id, home: groupTeams[i].id, away: groupTeams[j].id });
+              }
             }
           }
-        }
+        });
       });
 
-      // Distribute matches across fields and timeslots
+      // 2. Distribute matches across fields and timeslots
       const availableFields = fields.length > 0 ? fields : [{ id: null as unknown as string, name: 'Default' }];
 
       while (matchesToSchedule.length > 0) {
@@ -374,7 +371,6 @@ export default function App() {
         for (const field of availableFields) {
           if (matchesToSchedule.length === 0) break;
 
-          // Find first match where neither team is already playing
           const matchIndex = matchesToSchedule.findIndex(m => 
             !teamsPlayingInThisSlot.has(m.home) && !teamsPlayingInThisSlot.has(m.away)
           );
@@ -386,7 +382,7 @@ export default function App() {
             teamsPlayingInThisSlot.add(m.away);
             
             newMatchesRaw.push({
-              category_id: categoryId,
+              category_id: m.category,
               field_id: field.id,
               team_home_id: m.home,
               team_away_id: m.away,
@@ -401,92 +397,97 @@ export default function App() {
           }
         }
         
-        // Move to next time slot
         currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
       }
 
-      // Add Playoffs if requested
+      // 3. Add Playoffs if requested (Concurrent across categories)
       if (generatePlayoffs) {
-        const groupKeys = Object.keys(groups).sort();
-        if (groupKeys.length === 2) {
-          // Semifinals
-          newMatchesRaw.push({
-            category_id: categoryId,
-            field_id: availableFields[0].id,
-            team_home_id: null,
-            team_away_id: null,
-            placeholder_home: `1° Girone ${groupKeys[0]}`,
-            placeholder_away: `2° Girone ${groupKeys[1]}`,
-            stage: 'semi',
-            score_home: 0,
-            score_away: 0,
-            scheduled_time: new Date(currentTime).toISOString(),
-            status: 'scheduled'
+        const semiFinalsToSchedule: { category: string; homePlaceholder: string; awayPlaceholder: string }[] = [];
+        const finalsToSchedule: { category: string; homePlaceholder: string; awayPlaceholder: string }[] = [];
+
+        categories.forEach(cat => {
+          const categoryTeams = teams.filter(t => t.category_id === cat.id);
+          const groups: Record<string, Team[]> = {};
+          categoryTeams.forEach(t => {
+            const g = t.group_name || 'A';
+            if (!groups[g]) groups[g] = [];
+            groups[g].push(t);
           });
+          const groupKeys = Object.keys(groups).sort();
           
-          if (availableFields.length > 1) {
-            newMatchesRaw.push({
-              category_id: categoryId,
-              field_id: availableFields[1].id,
-              team_home_id: null,
-              team_away_id: null,
-              placeholder_home: `1° Girone ${groupKeys[1]}`,
-              placeholder_away: `2° Girone ${groupKeys[0]}`,
-              stage: 'semi',
-              score_home: 0,
-              score_away: 0,
-              scheduled_time: new Date(currentTime).toISOString(),
-              status: 'scheduled'
+          if (groupKeys.length === 2) {
+            semiFinalsToSchedule.push({
+              category: cat.id,
+              homePlaceholder: `1° Girone ${groupKeys[0]}`,
+              awayPlaceholder: `2° Girone ${groupKeys[1]}`
             });
-            currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
-          } else {
-            currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
-            newMatchesRaw.push({
-              category_id: categoryId,
-              field_id: availableFields[0].id,
-              team_home_id: null,
-              team_away_id: null,
-              placeholder_home: `1° Girone ${groupKeys[1]}`,
-              placeholder_away: `2° Girone ${groupKeys[0]}`,
-              stage: 'semi',
-              score_home: 0,
-              score_away: 0,
-              scheduled_time: new Date(currentTime).toISOString(),
-              status: 'scheduled'
+            semiFinalsToSchedule.push({
+              category: cat.id,
+              homePlaceholder: `1° Girone ${groupKeys[1]}`,
+              awayPlaceholder: `2° Girone ${groupKeys[0]}`
             });
-            currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
           }
-        }
-        
-        // Final
-        newMatchesRaw.push({
-          category_id: categoryId,
-          field_id: availableFields[0].id,
-          team_home_id: null,
-          team_away_id: null,
-          placeholder_home: groupKeys.length === 2 ? `Vincente Semifinale 1` : `1° Classificato`,
-          placeholder_away: groupKeys.length === 2 ? `Vincente Semifinale 2` : `2° Classificato`,
-          stage: 'final',
-          score_home: 0,
-          score_away: 0,
-          scheduled_time: new Date(currentTime).toISOString(),
-          status: 'scheduled'
+
+          finalsToSchedule.push({
+            category: cat.id,
+            homePlaceholder: groupKeys.length === 2 ? 'Vincente Semifinale 1' : '1° Classificato',
+            awayPlaceholder: groupKeys.length === 2 ? 'Vincente Semifinale 2' : '2° Classificato'
+          });
         });
+
+        // Schedule all Semifinals
+        while (semiFinalsToSchedule.length > 0) {
+          for (const field of availableFields) {
+            if (semiFinalsToSchedule.length === 0) break;
+            const semi = semiFinalsToSchedule.shift()!;
+            newMatchesRaw.push({
+              category_id: semi.category,
+              field_id: field.id,
+              team_home_id: null,
+              team_away_id: null,
+              placeholder_home: semi.homePlaceholder,
+              placeholder_away: semi.awayPlaceholder,
+              stage: 'semi',
+              score_home: 0,
+              score_away: 0,
+              scheduled_time: new Date(currentTime).toISOString(),
+              status: 'scheduled'
+            });
+          }
+          currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+        }
+
+        // Schedule all Finals
+        while (finalsToSchedule.length > 0) {
+          for (const field of availableFields) {
+            if (finalsToSchedule.length === 0) break;
+            const finalMatch = finalsToSchedule.shift()!;
+            newMatchesRaw.push({
+              category_id: finalMatch.category,
+              field_id: field.id,
+              team_home_id: null,
+              team_away_id: null,
+              placeholder_home: finalMatch.homePlaceholder,
+              placeholder_away: finalMatch.awayPlaceholder,
+              stage: 'final',
+              score_home: 0,
+              score_away: 0,
+              scheduled_time: new Date(currentTime).toISOString(),
+              status: 'scheduled'
+            });
+          }
+          currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+        }
       }
 
       if (isMockMode) {
-        // Just mock it by reloading (won't actually save, but avoids error)
         alert('Calendario generato (Modalità Demo - i dati non vengono salvati). Ricarica per azzerare.');
         return;
       }
 
       if (newMatchesRaw.length > 0) {
-        const { error } = await supabase
-          .from('matches')
-          .insert(newMatchesRaw);
-        
+        const { error } = await supabase.from('matches').insert(newMatchesRaw);
         if (error) throw error;
-        
         loadInitialData();
       }
 
@@ -495,7 +496,6 @@ export default function App() {
       throw error;
     }
   };
-
   const handleDeleteAllMatches = async () => {
     if (isMockMode) { alert("Modalità Demo: I dati non vengono realmente cancellati."); setMatches([]); return; }
     try {

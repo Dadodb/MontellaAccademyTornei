@@ -16,7 +16,7 @@ interface AdminDashboardProps {
   onAddTeam: (name: string, categoryId: string, groupName: string) => Promise<void>;
   onUpdateTeam: (id: string, name: string, categoryId: string, groupName: string) => Promise<void>;
   onDeleteTeam: (id: string) => Promise<void>;
-  onGenerateCalendar: (categoryId: string, startTime: string, matchDuration: number, breakDuration: number, generatePlayoffs: boolean) => Promise<void>;
+  onGenerateCalendar: (startTime: string, matchDuration: number, breakDuration: number, generatePlayoffs: boolean) => Promise<void>;
   onDeleteAllMatches: () => Promise<void>;
   onDeleteAllTeams: () => Promise<void>;
   onDeleteAllFields: () => Promise<void>;
@@ -67,7 +67,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [editingTeamGroupName, setEditingTeamGroupName] = useState('A');
 
   // Calendar Gen State
-  const [genCategoryId, setGenCategoryId] = useState('');
   const [genStartTime, setGenStartTime] = useState('15:00');
   const [genMatchDuration, setGenMatchDuration] = useState(20);
   const [genBreakDuration, setGenBreakDuration] = useState(10);
@@ -573,18 +572,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         
         <div className="space-y-3 bg-slate-100/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
           <p className="text-xs text-slate-500">
-            Genera automaticamente il girone all'italiana (Tutti contro Tutti) per le squadre inserite.
+            Genera automaticamente il girone all'italiana (Tutti contro Tutti) e i playoff per <strong>TUTTE le categorie</strong> in contemporanea, ottimizzando l'uso dei campi.
           </p>
           <div className="grid grid-cols-2 gap-3">
-            <select
-              value={genCategoryId}
-              onChange={(e) => setGenCategoryId(e.target.value)}
-              className="col-span-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-            >
-              <option value="" disabled>Seleziona Categoria...</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-
             <div className="flex flex-col">
               <label className="text-[10px] text-slate-500 mb-0.5">Orario Inizio</label>
               <input
@@ -633,19 +623,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           
           <button
             onClick={async () => {
-              if (!genCategoryId) { setError("Seleziona una categoria"); return; }
+              if (categories.length === 0 || teams.length === 0) { setError("Aggiungi categorie e squadre prima di generare"); return; }
               try {
                 setError(null);
-                await onGenerateCalendar(genCategoryId, genStartTime, genMatchDuration, genBreakDuration, genPlayoffs);
-                alert("Calendario generato con successo!");
+                await onGenerateCalendar(genStartTime, genMatchDuration, genBreakDuration, genPlayoffs);
+                alert("Calendario Globale generato con successo!");
               } catch (err: any) {
                 setError(err.message || 'Errore durante la generazione');
               }
             }}
-            disabled={!genCategoryId}
-            className="w-full mt-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="w-full mt-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700"
           >
-            Genera Calendario
+            Genera Calendario Globale
           </button>
         </div>
       </section>
