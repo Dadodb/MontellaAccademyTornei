@@ -28,6 +28,8 @@ export function calculateStandings(matches: Match[], teams: Team[]): TeamStandin
   const finishedMatches = matches.filter((m) => m.status === 'finished');
 
   finishedMatches.forEach((match) => {
+    if (!match.team_home_id || !match.team_away_id) return;
+
     const home = standingsMap.get(match.team_home_id);
     const away = standingsMap.get(match.team_away_id);
 
