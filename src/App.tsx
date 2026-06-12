@@ -345,9 +345,10 @@ export default function App() {
       let currentTime = new Date();
       currentTime.setHours(startHour, startMin, 0, 0);
 
-      const newMatchesRaw = [];
+      const newMatchesRaw: any[] = [];
+      const matchesToSchedule: { home: string; away: string }[] = [];
 
-      // Round robin per group
+      // Generate all matchups
       Object.keys(groups).forEach(groupName => {
         const groupTeams = groups[groupName];
         for (let i = 0; i < groupTeams.length; i++) {
@@ -358,24 +359,51 @@ export default function App() {
               (m.team_home_id === groupTeams[j].id && m.team_away_id === groupTeams[i].id)
             );
             if (!exists) {
-              newMatchesRaw.push({
-                category_id: categoryId,
-                field_id: fields[0]?.id || null,
-                team_home_id: groupTeams[i].id,
-                team_away_id: groupTeams[j].id,
-                placeholder_home: null,
-                placeholder_away: null,
-                stage: 'group',
-                score_home: 0,
-                score_away: 0,
-                scheduled_time: currentTime.toISOString(),
-                status: 'scheduled'
-              });
-              currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+              matchesToSchedule.push({ home: groupTeams[i].id, away: groupTeams[j].id });
             }
           }
         }
       });
+
+      // Distribute matches across fields and timeslots
+      const availableFields = fields.length > 0 ? fields : [{ id: null as unknown as string, name: 'Default' }];
+
+      while (matchesToSchedule.length > 0) {
+        const teamsPlayingInThisSlot = new Set<string>();
+
+        for (const field of availableFields) {
+          if (matchesToSchedule.length === 0) break;
+
+          // Find first match where neither team is already playing
+          const matchIndex = matchesToSchedule.findIndex(m => 
+            !teamsPlayingInThisSlot.has(m.home) && !teamsPlayingInThisSlot.has(m.away)
+          );
+
+          if (matchIndex !== -1) {
+            const m = matchesToSchedule[matchIndex];
+            matchesToSchedule.splice(matchIndex, 1);
+            teamsPlayingInThisSlot.add(m.home);
+            teamsPlayingInThisSlot.add(m.away);
+            
+            newMatchesRaw.push({
+              category_id: categoryId,
+              field_id: field.id,
+              team_home_id: m.home,
+              team_away_id: m.away,
+              placeholder_home: null,
+              placeholder_away: null,
+              stage: 'group',
+              score_home: 0,
+              score_away: 0,
+              scheduled_time: new Date(currentTime).toISOString(),
+              status: 'scheduled'
+            });
+          }
+        }
+        
+        // Move to next time slot
+        currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+      }
 
       // Add Playoffs if requested
       if (generatePlayoffs) {
@@ -384,7 +412,7 @@ export default function App() {
           // Semifinals
           newMatchesRaw.push({
             category_id: categoryId,
-            field_id: fields[0]?.id || null,
+            field_id: availableFields[0].id,
             team_home_id: null,
             team_away_id: null,
             placeholder_home: `1° Girone ${groupKeys[0]}`,
@@ -392,31 +420,48 @@ export default function App() {
             stage: 'semi',
             score_home: 0,
             score_away: 0,
-            scheduled_time: currentTime.toISOString(),
+            scheduled_time: new Date(currentTime).toISOString(),
             status: 'scheduled'
           });
-          currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
           
-          newMatchesRaw.push({
-            category_id: categoryId,
-            field_id: fields[0]?.id || null,
-            team_home_id: null,
-            team_away_id: null,
-            placeholder_home: `1° Girone ${groupKeys[1]}`,
-            placeholder_away: `2° Girone ${groupKeys[0]}`,
-            stage: 'semi',
-            score_home: 0,
-            score_away: 0,
-            scheduled_time: currentTime.toISOString(),
-            status: 'scheduled'
-          });
-          currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+          if (availableFields.length > 1) {
+            newMatchesRaw.push({
+              category_id: categoryId,
+              field_id: availableFields[1].id,
+              team_home_id: null,
+              team_away_id: null,
+              placeholder_home: `1° Girone ${groupKeys[1]}`,
+              placeholder_away: `2° Girone ${groupKeys[0]}`,
+              stage: 'semi',
+              score_home: 0,
+              score_away: 0,
+              scheduled_time: new Date(currentTime).toISOString(),
+              status: 'scheduled'
+            });
+            currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+          } else {
+            currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+            newMatchesRaw.push({
+              category_id: categoryId,
+              field_id: availableFields[0].id,
+              team_home_id: null,
+              team_away_id: null,
+              placeholder_home: `1° Girone ${groupKeys[1]}`,
+              placeholder_away: `2° Girone ${groupKeys[0]}`,
+              stage: 'semi',
+              score_home: 0,
+              score_away: 0,
+              scheduled_time: new Date(currentTime).toISOString(),
+              status: 'scheduled'
+            });
+            currentTime.setMinutes(currentTime.getMinutes() + matchDuration + breakDuration);
+          }
         }
         
         // Final
         newMatchesRaw.push({
           category_id: categoryId,
-          field_id: fields[0]?.id || null,
+          field_id: availableFields[0].id,
           team_home_id: null,
           team_away_id: null,
           placeholder_home: groupKeys.length === 2 ? `Vincente Semifinale 1` : `1° Classificato`,
@@ -424,7 +469,7 @@ export default function App() {
           stage: 'final',
           score_home: 0,
           score_away: 0,
-          scheduled_time: currentTime.toISOString(),
+          scheduled_time: new Date(currentTime).toISOString(),
           status: 'scheduled'
         });
       }
