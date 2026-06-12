@@ -281,40 +281,52 @@ export default function App() {
 
   // Operator Action implementations
   const handleUpdateScore = async (matchId: string, scoreHome: number, scoreAway: number) => {
-    if (isMockMode) {
-      setMatches((prev) =>
-        prev.map((m) => (m.id === matchId ? { ...m, score_home: scoreHome, score_away: scoreAway } : m))
-      );
-      return;
-    }
+    // Optimistic update per UI fluida
+    setMatches((prev) =>
+      prev.map((m) => (m.id === matchId ? { ...m, score_home: scoreHome, score_away: scoreAway } : m))
+    );
 
-    try {
-      const { error } = await supabase
-        .from('matches')
-        .update({ score_home: scoreHome, score_away: scoreAway })
-        .eq('id', matchId);
-      if (error) throw error;
-    } catch (err: any) {
-      alert(`Errore aggiornamento score: ${err.message}`);
+    if (!isMockMode) {
+      try {
+        const { error, data } = await supabase
+          .from('matches')
+          .update({ score_home: scoreHome, score_away: scoreAway })
+          .eq('id', matchId)
+          .select();
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error("Nessuna riga aggiornata. Controlla di aver eseguito la policy UPDATE per 'matches' nel database.");
+        }
+      } catch (err: any) {
+        alert(`Errore aggiornamento score: ${err.message}`);
+        loadInitialData(); // Revert
+      }
     }
   };
 
   const handleUpdateStatus = async (matchId: string, status: MatchStatus) => {
-    if (isMockMode) {
-      setMatches((prev) =>
-        prev.map((m) => (m.id === matchId ? { ...m, status } : m))
-      );
-      return;
-    }
+    // Optimistic update per UI fluida
+    setMatches((prev) =>
+      prev.map((m) => (m.id === matchId ? { ...m, status } : m))
+    );
 
-    try {
-      const { error } = await supabase
-        .from('matches')
-        .update({ status })
-        .eq('id', matchId);
-      if (error) throw error;
-    } catch (err: any) {
-      alert(`Errore cambio stato: ${err.message}`);
+    if (!isMockMode) {
+      try {
+        const { error, data } = await supabase
+          .from('matches')
+          .update({ status })
+          .eq('id', matchId)
+          .select();
+          
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error("Nessuna riga aggiornata. Controlla di aver eseguito la policy UPDATE per 'matches' nel database.");
+        }
+      } catch (err: any) {
+        alert(`Errore cambio stato: ${err.message}`);
+        loadInitialData(); // Revert
+      }
     }
   };
 
