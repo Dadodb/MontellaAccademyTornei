@@ -137,6 +137,14 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('live');
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Field conflict modal state
+  const [fieldConflictModal, setFieldConflictModal] = useState<{
+    matchId: string;
+    matchLabel: string;
+    occupiedField: Field;
+    freeFields: Field[];
+  } | null>(null);
   
   // Sunlight Optimization State
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -305,8 +313,72 @@ export default function App() {
     }
   };
 
+  // Low-level: actually set a match to live (optionally reassigning field first)
+  const doStartLive = async (matchId: string, newFieldId?: string) => {
+    const updatePayload: Record<string, unknown> = { status: 'live' };
+    if (newFieldId) updatePayload.field_id = newFieldId;
+
+    // Optimistic update
+    setMatches((prev) =>
+      prev.map((m) =>
+        m.id === matchId
+          ? {
+              ...m,
+              status: 'live' as MatchStatus,
+              field_id: newFieldId ?? m.field_id,
+              field: newFieldId ? (fields.find((f) => f.id === newFieldId) ?? m.field) : m.field,
+            }
+          : m
+      )
+    );
+
+    if (!isMockMode) {
+      try {
+        const { error, data } = await supabase
+          .from('matches')
+          .update(updatePayload)
+          .eq('id', matchId)
+          .select();
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error("Nessuna riga aggiornata. Controlla la policy UPDATE per 'matches'.");
+        }
+      } catch (err: any) {
+        alert(`Errore avvio partita: ${err.message}`);
+        loadInitialData();
+      }
+    }
+  };
+
   const handleUpdateStatus = async (matchId: string, status: MatchStatus) => {
-    // Optimistic update per UI fluida
+    // Only intercept the 'live' transition for field conflict checks
+    if (status === 'live') {
+      const match = matches.find((m) => m.id === matchId);
+      if (match) {
+        // Check if another match is already live on the same field
+        const conflicting = matches.find(
+          (m) => m.id !== matchId && m.field_id === match.field_id && m.status === 'live'
+        );
+        if (conflicting) {
+          // Find fields that have NO live match
+          const busyFieldIds = new Set(matches.filter((m) => m.status === 'live').map((m) => m.field_id));
+          const freeFields = fields.filter((f) => !busyFieldIds.has(f.id) && f.id !== match.field_id);
+          const matchLabel = `${match.team_home?.name ?? match.placeholder_home ?? 'Casa'} vs ${match.team_away?.name ?? match.placeholder_away ?? 'Trasferta'}`;
+          setFieldConflictModal({
+            matchId,
+            matchLabel,
+            occupiedField: match.field ?? { id: match.field_id, name: match.field_id },
+            freeFields,
+          });
+          return; // Stop here — wait for modal decision
+        }
+      }
+      // No conflict — start directly
+      doStartLive(matchId);
+      return;
+    }
+
+    // For all other status transitions (finished, scheduled) use normal flow
     setMatches((prev) =>
       prev.map((m) => (m.id === matchId ? { ...m, status } : m))
     );
@@ -318,14 +390,13 @@ export default function App() {
           .update({ status })
           .eq('id', matchId)
           .select();
-          
         if (error) throw error;
         if (!data || data.length === 0) {
-          throw new Error("Nessuna riga aggiornata. Controlla di aver eseguito la policy UPDATE per 'matches' nel database.");
+          throw new Error("Nessuna riga aggiornata. Controlla la policy UPDATE per 'matches'.");
         }
       } catch (err: any) {
         alert(`Errore cambio stato: ${err.message}`);
-        loadInitialData(); // Revert
+        loadInitialData();
       }
     }
   };
@@ -805,7 +876,92 @@ export default function App() {
         )}
       </main>
 
-      {/* Operator Status Indicator Sticky Footer */}
+      {/* Field Conflict Modal */}
+      {fieldConflictModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden">
+            
+            {/* Header */}
+            <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/50 px-4 py-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                  <path d="M12 9v4"/><path d="M12 17h.01"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-amber-800 dark:text-amber-300">Campo già occupato</h3>
+                <p className="text-[11px] text-amber-600 dark:text-amber-500 leading-tight mt-0.5">
+                  {fieldConflictModal.occupiedField.name}
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Sul campo <strong>{fieldConflictModal.occupiedField.name}</strong> è già in corso un'altra partita.
+                Non è possibile avviare <strong>{fieldConflictModal.matchLabel}</strong> sullo stesso campo.
+              </p>
+
+              {fieldConflictModal.freeFields.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Campi liberi disponibili:
+                  </p>
+                  {fieldConflictModal.freeFields.map((field) => (
+                    <button
+                      key={field.id}
+                      onClick={() => {
+                        doStartLive(fieldConflictModal.matchId, field.id);
+                        setFieldConflictModal(null);
+                      }}
+                      className="w-full flex items-center justify-between rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 px-3 py-2.5 text-left text-xs font-bold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-all"
+                    >
+                      <span>{field.name}</span>
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        Usa questo campo
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                        </svg>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 px-3 py-2.5">
+                  <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
+                    Nessun campo libero disponibile al momento.
+                  </p>
+                  <p className="text-[10px] text-rose-500 dark:text-rose-500 mt-0.5">
+                    Termina una delle partite in corso per liberare un campo.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-2 border-t border-slate-100 dark:border-slate-800 px-4 py-3">
+              <button
+                onClick={() => setFieldConflictModal(null)}
+                className="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => {
+                  doStartLive(fieldConflictModal.matchId);
+                  setFieldConflictModal(null);
+                }}
+                className="flex-1 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white hover:bg-amber-600 transition-all"
+              >
+                Avvia lo stesso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isAdmin && (
         <div className="fixed bottom-0 inset-x-0 bg-slate-900 border-t border-slate-800 text-white py-2.5 px-4 text-center z-50 text-[11px] font-bold tracking-wide flex items-center justify-center gap-1.5 shadow-2xl">
           <ShieldAlert className="h-4 w-4 text-emerald-400" />
