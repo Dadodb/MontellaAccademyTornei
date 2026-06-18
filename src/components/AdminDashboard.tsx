@@ -647,82 +647,133 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             Azioni Massive
           </h3>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/30 dark:bg-rose-950/20 flex flex-col justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">Svuota Calendario</h4>
-              <p className="mt-1 text-xs text-rose-600 dark:text-rose-500 mb-4">
-                Elimina tutte le partite. Mantiene squadre e gironi per generare un nuovo calendario.
-              </p>
-            </div>
-            <button
-              onClick={async () => {
-                if (window.confirm("Eliminare TUTTE le partite dal calendario?")) {
-                  try { await onDeleteAllMatches(); } catch(e:any) { setError(e.message); }
-                }
-              }}
-              className="rounded-lg border border-rose-600 bg-transparent px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-600 hover:text-white dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white transition-colors"
-            >
-              Elimina tutte le Partite
-            </button>
-          </div>
 
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/30 dark:bg-rose-950/20 flex flex-col justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">Elimina Squadre</h4>
-              <p className="mt-1 text-xs text-rose-600 dark:text-rose-500 mb-4">
-                Elimina tutte le squadre. Le partite ad esse associate verranno rimosse.
-              </p>
-            </div>
-            <button
-              onClick={async () => {
-                if (window.confirm("Eliminare TUTTE le squadre (e di conseguenza le partite)?")) {
-                  try { await onDeleteAllTeams(); } catch(e:any) { setError(e.message); }
-                }
-              }}
-              className="rounded-lg border border-rose-600 bg-transparent px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-600 hover:text-white dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white transition-colors"
-            >
-              Elimina tutte le Squadre
-            </button>
-          </div>
+        {/* Contextual action cards — shown based on current data state */}
+        <div className="space-y-3">
 
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/30 dark:bg-rose-950/20 flex flex-col justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">Elimina Campi</h4>
-              <p className="mt-1 text-xs text-rose-600 dark:text-rose-500 mb-4">
-                Elimina tutti i campi di gioco. (Non eliminare se ci sono partite programmate).
-              </p>
+          {/* ── STEP 1: Calendar exists → show only "Svuota Calendario" ── */}
+          {matches.length > 0 && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/30 dark:bg-rose-950/20 flex flex-col justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">Svuota Calendario</h4>
+                <p className="mt-1 text-xs text-rose-600 dark:text-rose-500">
+                  Elimina tutte le partite ({matches.length} partite). Mantiene squadre, campi e categorie per generare un nuovo calendario.
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  if (window.confirm(`Eliminare TUTTE le ${matches.length} partite dal calendario?`)) {
+                    try { await onDeleteAllMatches(); } catch(e:any) { setError(e.message); }
+                  }
+                }}
+                className="self-start rounded-lg border border-rose-600 bg-transparent px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-600 hover:text-white dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white transition-colors"
+              >
+                Elimina tutte le Partite
+              </button>
             </div>
-            <button
-              onClick={async () => {
-                if (window.confirm("Eliminare TUTTI i campi?")) {
-                  try { await onDeleteAllFields(); } catch(e:any) { setError(e.message); }
-                }
-              }}
-              className="rounded-lg border border-rose-600 bg-transparent px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-600 hover:text-white dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white transition-colors"
-            >
-              Elimina tutti i Campi
-            </button>
-          </div>
+          )}
 
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/30 dark:bg-rose-950/20 flex flex-col justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">Elimina Categorie</h4>
-              <p className="mt-1 text-xs text-rose-600 dark:text-rose-500 mb-4">
-                Elimina tutte le categorie. (Assicurati di aver svuotato prima le squadre).
-              </p>
+          {/* ── STEP 2: No calendar → show data cleanup actions in correct dependency order ── */}
+          {matches.length === 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+              {/* Elimina Squadre — available if teams exist */}
+              {teams.length > 0 ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/30 dark:bg-rose-950/20 flex flex-col justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">Elimina Squadre</h4>
+                    <p className="mt-1 text-xs text-rose-600 dark:text-rose-500">
+                      Elimina tutte le {teams.length} squadre registrate.
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Eliminare TUTTE le ${teams.length} squadre?`)) {
+                        try { await onDeleteAllTeams(); } catch(e:any) { setError(e.message); }
+                      }
+                    }}
+                    className="self-start rounded-lg border border-rose-600 bg-transparent px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-600 hover:text-white dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white transition-colors"
+                  >
+                    Elimina tutte le Squadre
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/30 flex flex-col gap-1">
+                  <h4 className="text-sm font-bold text-slate-400 dark:text-slate-500">Elimina Squadre</h4>
+                  <p className="text-xs text-slate-400 dark:text-slate-600">Nessuna squadra da eliminare.</p>
+                </div>
+              )}
+
+              {/* Elimina Campi — available if fields exist AND no teams (teams reference fields via matches) */}
+              {fields.length > 0 && teams.length === 0 ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/30 dark:bg-rose-950/20 flex flex-col justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">Elimina Campi</h4>
+                    <p className="mt-1 text-xs text-rose-600 dark:text-rose-500">
+                      Elimina tutti i {fields.length} campi di gioco.
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Eliminare TUTTI i ${fields.length} campi?`)) {
+                        try { await onDeleteAllFields(); } catch(e:any) { setError(e.message); }
+                      }
+                    }}
+                    className="self-start rounded-lg border border-rose-600 bg-transparent px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-600 hover:text-white dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white transition-colors"
+                  >
+                    Elimina tutti i Campi
+                  </button>
+                </div>
+              ) : fields.length > 0 && teams.length > 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/30 flex flex-col gap-1">
+                  <h4 className="text-sm font-bold text-slate-400 dark:text-slate-500">Elimina Campi</h4>
+                  <p className="text-xs text-slate-400 dark:text-slate-600">Elimina prima le squadre per poter rimuovere i campi.</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/30 flex flex-col gap-1">
+                  <h4 className="text-sm font-bold text-slate-400 dark:text-slate-500">Elimina Campi</h4>
+                  <p className="text-xs text-slate-400 dark:text-slate-600">Nessun campo da eliminare.</p>
+                </div>
+              )}
+
+              {/* Elimina Categorie — available only when teams are also gone */}
+              {categories.length > 0 && teams.length === 0 ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/30 dark:bg-rose-950/20 flex flex-col justify-between gap-3 sm:col-span-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-rose-800 dark:text-rose-400">Elimina Categorie</h4>
+                    <p className="mt-1 text-xs text-rose-600 dark:text-rose-500">
+                      Elimina tutte le {categories.length} categorie del torneo.
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (window.confirm(`Eliminare TUTTE le ${categories.length} categorie?`)) {
+                        try { await onDeleteAllCategories(); } catch(e:any) { setError(e.message); }
+                      }
+                    }}
+                    className="self-start rounded-lg border border-rose-600 bg-transparent px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-600 hover:text-white dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white transition-colors"
+                  >
+                    Elimina tutte le Categorie
+                  </button>
+                </div>
+              ) : categories.length > 0 && teams.length > 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/30 flex flex-col gap-1 sm:col-span-2">
+                  <h4 className="text-sm font-bold text-slate-400 dark:text-slate-500">Elimina Categorie</h4>
+                  <p className="text-xs text-slate-400 dark:text-slate-600">Elimina prima le squadre per poter rimuovere le categorie.</p>
+                </div>
+              ) : null}
+
             </div>
-            <button
-              onClick={async () => {
-                if (window.confirm("Eliminare TUTTE le categorie?")) {
-                  try { await onDeleteAllCategories(); } catch(e:any) { setError(e.message); }
-                }
-              }}
-              className="rounded-lg border border-rose-600 bg-transparent px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-600 hover:text-white dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-600 dark:hover:text-white transition-colors"
-            >
-              Elimina tutte le Categorie
-            </button>
-          </div>
+          )}
+
+          {/* Everything is clean */}
+          {matches.length === 0 && teams.length === 0 && fields.length === 0 && categories.length === 0 && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/30 text-center">
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500">Nessun dato da eliminare.</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-600 mt-1">Il torneo è completamente resettato.</p>
+            </div>
+          )}
+
         </div>
       </section>
 
