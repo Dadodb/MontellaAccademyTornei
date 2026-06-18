@@ -36,6 +36,7 @@ export interface Match {
   score_home: number;
   score_away: number;
   scheduled_time: string;
+  started_at: string | null;  // Timestamp when the match went live
   status: MatchStatus;
   created_at?: string;
 }

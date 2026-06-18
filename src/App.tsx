@@ -53,6 +53,7 @@ const MOCK_MATCHES_RAW = [
     score_home: 2,
     score_away: 1,
     scheduled_time: new Date(now.getTime() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+    started_at: null,
     status: 'finished' as MatchStatus,
   },
   {
@@ -63,7 +64,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-4',
     score_home: 1,
     score_away: 1,
-    scheduled_time: new Date(now.getTime() - 10 * 60 * 1000).toISOString(), // active now
+    scheduled_time: new Date(now.getTime() - 10 * 60 * 1000).toISOString(),
+    started_at: new Date(now.getTime() - 10 * 60 * 1000).toISOString(), // live since 10 min ago
     status: 'live' as MatchStatus,
   },
   // Pulcini 2015
@@ -75,7 +77,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-6',
     score_home: 0,
     score_away: 0,
-    scheduled_time: new Date(now.getTime() - 20 * 60 * 1000).toISOString(), // active now
+    scheduled_time: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
+    started_at: new Date(now.getTime() - 20 * 60 * 1000).toISOString(), // live since 20 min ago
     status: 'live' as MatchStatus,
   },
   {
@@ -86,7 +89,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-8',
     score_home: 0,
     score_away: 0,
-    scheduled_time: new Date(now.getTime() + 45 * 60 * 1000).toISOString(), // scheduled
+    scheduled_time: new Date(now.getTime() + 45 * 60 * 1000).toISOString(),
+    started_at: null,
     status: 'scheduled' as MatchStatus,
   },
   // Esordienti 2013
@@ -98,7 +102,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-10',
     score_home: 3,
     score_away: 0,
-    scheduled_time: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(), // finished
+    scheduled_time: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+    started_at: null,
     status: 'finished' as MatchStatus,
   },
   {
@@ -110,6 +115,7 @@ const MOCK_MATCHES_RAW = [
     score_home: 0,
     score_away: 0,
     scheduled_time: new Date(now.getTime() + 90 * 60 * 1000).toISOString(),
+    started_at: null,
     status: 'scheduled' as MatchStatus,
   },
 ];
@@ -315,7 +321,8 @@ export default function App() {
 
   // Low-level: actually set a match to live (optionally reassigning field first)
   const doStartLive = async (matchId: string, newFieldId?: string) => {
-    const updatePayload: Record<string, unknown> = { status: 'live' };
+    const startedAt = new Date().toISOString();
+    const updatePayload: Record<string, unknown> = { status: 'live', started_at: startedAt };
     if (newFieldId) updatePayload.field_id = newFieldId;
 
     // Optimistic update
@@ -325,6 +332,7 @@ export default function App() {
           ? {
               ...m,
               status: 'live' as MatchStatus,
+              started_at: startedAt,
               field_id: newFieldId ?? m.field_id,
               field: newFieldId ? (fields.find((f) => f.id === newFieldId) ?? m.field) : m.field,
             }

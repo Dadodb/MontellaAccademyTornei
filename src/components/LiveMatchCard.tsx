@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { MatchWithDetails } from '../types';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus, Timer } from 'lucide-react';
 import { getCategoryColor } from '../utils/categoryColors';
 
 interface LiveMatchCardProps {
@@ -17,12 +17,44 @@ function getInitials(name: string): string {
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
+/** Formatta i secondi come MM:SS */
+function formatElapsed(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+/** Hook che restituisce i secondi trascorsi da un timestamp ISO, aggiornandosi ogni secondo */
+function useElapsedSeconds(startedAt: string | null): number | null {
+  const [elapsed, setElapsed] = useState<number | null>(() => {
+    if (!startedAt) return null;
+    return Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+  });
+
+  useEffect(() => {
+    if (!startedAt) { setElapsed(null); return; }
+
+    // Aggiorna subito
+    setElapsed(Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [startedAt]);
+
+  return elapsed;
+}
+
 export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({
   match,
   isAdmin,
   onUpdateScore,
   onFinishMatch,
 }) => {
+  const elapsedSeconds = useElapsedSeconds(match.started_at ?? null);
+
   const handleScoreChange = (team: 'home' | 'away', increment: boolean) => {
     if (!onUpdateScore) return;
     const currentScore = team === 'home' ? match.score_home : match.score_away;
@@ -43,20 +75,31 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-md border border-slate-100 dark:bg-slate-900 dark:border-slate-800 transition-all duration-300 hover:shadow-lg">
 
-      {/* ── Top bar: Categoria + LIVE badge ── */}
+      {/* ── Top bar: Categoria + Timer LIVE ── */}
       <div className={`px-4 py-2 flex items-center justify-between border-b border-black/5 dark:border-white/5 ${color.bg} ${color.darkBg}`}>
         <span className={`text-[11px] font-extrabold uppercase tracking-wider ${color.text} ${color.darkText}`}>
           {match.category?.name || 'Categoria'}
         </span>
-        <div className="flex items-center gap-1.5 rounded-full bg-rose-500 px-2.5 py-0.5 text-[9px] font-black tracking-wider text-white shadow-sm">
-          <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
-          <span>LIVE</span>
+
+        <div className="flex items-center gap-2">
+          {/* Timer di gioco */}
+          {elapsedSeconds !== null && (
+            <div className="flex items-center gap-1 rounded-full bg-white/70 dark:bg-slate-800/80 px-2 py-0.5 text-[10px] font-black tabular-nums text-slate-700 dark:text-slate-200 shadow-sm">
+              <Timer className="h-2.5 w-2.5 text-slate-500 dark:text-slate-400" />
+              <span>{formatElapsed(Math.max(0, elapsedSeconds))}</span>
+            </div>
+          )}
+          {/* LIVE badge pulsante */}
+          <div className="flex items-center gap-1.5 rounded-full bg-rose-500 px-2.5 py-0.5 text-[9px] font-black tracking-wider text-white shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+            <span>LIVE</span>
+          </div>
         </div>
       </div>
 
       {/* ── Score row ── */}
       <div className="flex items-center justify-center gap-4 py-5 px-4">
-        {/* Home avatar */}
+        {/* Home */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-sm font-black dark:bg-emerald-950/40 dark:text-emerald-400 shrink-0">
             {homeInitials}
@@ -77,7 +120,7 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({
           </span>
         </div>
 
-        {/* Away avatar */}
+        {/* Away */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-100 text-sky-700 text-sm font-black dark:bg-sky-950/40 dark:text-sky-400 shrink-0">
             {awayInitials}
@@ -137,7 +180,7 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({
         </div>
       )}
 
-      {/* ── Footer: orario (solo per utenti normali, non admin) ── */}
+      {/* ── Footer: orario per utenti normali ── */}
       {!isAdmin && (
         <div className="border-t border-slate-50 dark:border-slate-800/50 px-4 py-2 flex justify-end">
           <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
