@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS matches (
     score_home INTEGER NOT NULL DEFAULT 0 CHECK (score_home >= 0),
     score_away INTEGER NOT NULL DEFAULT 0 CHECK (score_away >= 0),
     scheduled_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    started_at TIMESTAMP WITH TIME ZONE,
     status match_status NOT NULL DEFAULT 'scheduled',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     CONSTRAINT check_teams_are_different CHECK (team_home_id <> team_away_id)
