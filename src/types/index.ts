@@ -2,6 +2,8 @@
 
 export type MatchStatus = 'scheduled' | 'live' | 'finished';
 
+export type TeamColor = 'white' | 'black' | 'red' | 'blue' | 'sky' | 'emerald' | 'yellow' | 'orange' | 'purple' | 'slate';
+
 export interface Category {
   id: string;
   name: string;
@@ -20,6 +22,7 @@ export interface Team {
   name: string;
   category_id: string;
   group_name: string | null;
+  primary_color: TeamColor;
   manual_rank_priority: number;
   created_at?: string;
 }
@@ -35,6 +38,8 @@ export interface Match {
   stage: string; // 'group', 'semi', 'final', etc.
   score_home: number;
   score_away: number;
+  team_home_color: TeamColor | null;
+  team_away_color: TeamColor | null;
   scheduled_time: string;
   started_at: string | null;  // Timestamp when the match went live
   status: MatchStatus;

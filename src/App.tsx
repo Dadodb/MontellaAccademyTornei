@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, isMockMode } from './lib/supabaseClient';
-import type { Category, Field, Team, MatchWithDetails, MatchStatus } from './types';
+import type { Category, Field, Team, MatchWithDetails, MatchStatus, TeamColor } from './types';
 import { Navbar } from './components/Navbar';
 import type { TabId } from './components/TabNavigation';
 import { TabNavigation } from './components/TabNavigation';
@@ -25,20 +25,20 @@ const MOCK_FIELDS: Field[] = [
 
 const MOCK_TEAMS: Team[] = [
   // Primi Calci 2018
-  { id: 't-1', name: 'Montella Calcio A', category_id: 'cat-1', group_name: 'A', manual_rank_priority: 0 },
-  { id: 't-2', name: 'Virtus Avellino', category_id: 'cat-1', group_name: 'A', manual_rank_priority: 0 },
-  { id: 't-3', name: 'Lioni FC', category_id: 'cat-1', group_name: 'A', manual_rank_priority: 0 },
-  { id: 't-4', name: 'Bagnoli Calcio', category_id: 'cat-1', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-1', name: 'Montella Calcio A', category_id: 'cat-1', group_name: 'A', primary_color: 'red', manual_rank_priority: 0 },
+  { id: 't-2', name: 'Virtus Avellino', category_id: 'cat-1', group_name: 'A', primary_color: 'white', manual_rank_priority: 0 },
+  { id: 't-3', name: 'Lioni FC', category_id: 'cat-1', group_name: 'A', primary_color: 'red', manual_rank_priority: 0 },
+  { id: 't-4', name: 'Bagnoli Calcio', category_id: 'cat-1', group_name: 'A', primary_color: 'blue', manual_rank_priority: 0 },
   // Pulcini 2015
-  { id: 't-5', name: 'Montella Calcio B', category_id: 'cat-2', group_name: 'A', manual_rank_priority: 0 },
-  { id: 't-6', name: 'Nusco Academy', category_id: 'cat-2', group_name: 'A', manual_rank_priority: 0 },
-  { id: 't-7', name: 'Solofra Calcio', category_id: 'cat-2', group_name: 'A', manual_rank_priority: 0 },
-  { id: 't-8', name: 'Atripalda FC', category_id: 'cat-2', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-5', name: 'Montella Calcio B', category_id: 'cat-2', group_name: 'A', primary_color: 'red', manual_rank_priority: 0 },
+  { id: 't-6', name: 'Nusco Academy', category_id: 'cat-2', group_name: 'A', primary_color: 'sky', manual_rank_priority: 0 },
+  { id: 't-7', name: 'Solofra Calcio', category_id: 'cat-2', group_name: 'A', primary_color: 'yellow', manual_rank_priority: 0 },
+  { id: 't-8', name: 'Atripalda FC', category_id: 'cat-2', group_name: 'A', primary_color: 'emerald', manual_rank_priority: 0 },
   // Esordienti 2013
-  { id: 't-9', name: 'Montella Calcio C', category_id: 'cat-3', group_name: 'A', manual_rank_priority: 0 },
-  { id: 't-10', name: 'Torella Calcio', category_id: 'cat-3', group_name: 'A', manual_rank_priority: 0 },
-  { id: 't-11', name: 'Volturara FC', category_id: 'cat-3', group_name: 'A', manual_rank_priority: 0 },
-  { id: 't-12', name: 'Calitri Calcio', category_id: 'cat-3', group_name: 'A', manual_rank_priority: 0 },
+  { id: 't-9', name: 'Montella Calcio C', category_id: 'cat-3', group_name: 'A', primary_color: 'red', manual_rank_priority: 0 },
+  { id: 't-10', name: 'Torella Calcio', category_id: 'cat-3', group_name: 'A', primary_color: 'black', manual_rank_priority: 0 },
+  { id: 't-11', name: 'Volturara FC', category_id: 'cat-3', group_name: 'A', primary_color: 'orange', manual_rank_priority: 0 },
+  { id: 't-12', name: 'Calitri Calcio', category_id: 'cat-3', group_name: 'A', primary_color: 'purple', manual_rank_priority: 0 },
 ];
 
 const now = new Date();
@@ -52,6 +52,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-2',
     score_home: 2,
     score_away: 1,
+    team_home_color: null,
+    team_away_color: null,
     scheduled_time: new Date(now.getTime() - 60 * 60 * 1000).toISOString(), // 1 hour ago
     started_at: null,
     status: 'finished' as MatchStatus,
@@ -64,6 +66,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-4',
     score_home: 1,
     score_away: 1,
+    team_home_color: null,
+    team_away_color: null,
     scheduled_time: new Date(now.getTime() - 10 * 60 * 1000).toISOString(),
     started_at: new Date(now.getTime() - 10 * 60 * 1000).toISOString(), // live since 10 min ago
     status: 'live' as MatchStatus,
@@ -77,6 +81,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-6',
     score_home: 0,
     score_away: 0,
+    team_home_color: null,
+    team_away_color: null,
     scheduled_time: new Date(now.getTime() - 20 * 60 * 1000).toISOString(),
     started_at: new Date(now.getTime() - 20 * 60 * 1000).toISOString(), // live since 20 min ago
     status: 'live' as MatchStatus,
@@ -89,6 +95,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-8',
     score_home: 0,
     score_away: 0,
+    team_home_color: null,
+    team_away_color: null,
     scheduled_time: new Date(now.getTime() + 45 * 60 * 1000).toISOString(),
     started_at: null,
     status: 'scheduled' as MatchStatus,
@@ -102,6 +110,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-10',
     score_home: 3,
     score_away: 0,
+    team_home_color: null,
+    team_away_color: null,
     scheduled_time: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
     started_at: null,
     status: 'finished' as MatchStatus,
@@ -114,6 +124,8 @@ const MOCK_MATCHES_RAW = [
     team_away_id: 't-12',
     score_home: 0,
     score_away: 0,
+    team_home_color: null,
+    team_away_color: null,
     scheduled_time: new Date(now.getTime() + 90 * 60 * 1000).toISOString(),
     started_at: null,
     status: 'scheduled' as MatchStatus,
@@ -150,6 +162,15 @@ export default function App() {
     matchLabel: string;
     occupiedField: Field;
     freeFields: Field[];
+  } | null>(null);
+
+  // Color conflict modal state
+  const [colorConflictModal, setColorConflictModal] = useState<{
+    matchId: string;
+    matchLabel: string;
+    teamHomeName: string;
+    teamAwayName: string;
+    conflictColor: string;
   } | null>(null);
   
   // Sunlight Optimization State
@@ -320,10 +341,12 @@ export default function App() {
   };
 
   // Low-level: actually set a match to live (optionally reassigning field first)
-  const doStartLive = async (matchId: string, newFieldId?: string) => {
+  const doStartLive = async (matchId: string, newFieldId?: string, homeColorOverride?: string, awayColorOverride?: string) => {
     const startedAt = new Date().toISOString();
     const updatePayload: Record<string, unknown> = { status: 'live', started_at: startedAt };
     if (newFieldId) updatePayload.field_id = newFieldId;
+    if (homeColorOverride) updatePayload.team_home_color = homeColorOverride;
+    if (awayColorOverride) updatePayload.team_away_color = awayColorOverride;
 
     // Optimistic update
     setMatches((prev) =>
@@ -335,6 +358,8 @@ export default function App() {
               started_at: startedAt,
               field_id: newFieldId ?? m.field_id,
               field: newFieldId ? (fields.find((f) => f.id === newFieldId) ?? m.field) : m.field,
+              team_home_color: homeColorOverride ? (homeColorOverride as any) : m.team_home_color,
+              team_away_color: awayColorOverride ? (awayColorOverride as any) : m.team_away_color,
             }
           : m
       )
@@ -359,11 +384,11 @@ export default function App() {
   };
 
   const handleUpdateStatus = async (matchId: string, status: MatchStatus) => {
-    // Only intercept the 'live' transition for field conflict checks
+    // Only intercept the 'live' transition for field conflict & color conflict checks
     if (status === 'live') {
       const match = matches.find((m) => m.id === matchId);
       if (match) {
-        // Check if another match is already live on the same field
+        // 1. Check Field Conflict
         const conflicting = matches.find(
           (m) => m.id !== matchId && m.field_id === match.field_id && m.status === 'live'
         );
@@ -377,6 +402,19 @@ export default function App() {
             matchLabel,
             occupiedField: match.field ?? { id: match.field_id, name: match.field_id },
             freeFields,
+          });
+          return; // Stop here — wait for modal decision
+        }
+
+        // 2. Check Color Conflict
+        if (match.team_home && match.team_away && match.team_home.primary_color === match.team_away.primary_color) {
+          const matchLabel = `${match.team_home.name} vs ${match.team_away.name}`;
+          setColorConflictModal({
+            matchId,
+            matchLabel,
+            teamHomeName: match.team_home.name,
+            teamAwayName: match.team_away.name,
+            conflictColor: match.team_home.primary_color
           });
           return; // Stop here — wait for modal decision
         }
@@ -723,16 +761,16 @@ export default function App() {
     setFields((prev) => prev.filter((f) => f.id !== id));
   };
 
-  const handleAddTeam = async (name: string, categoryId: string, groupName: string) => {
+  const handleAddTeam = async (name: string, categoryId: string, groupName: string, primaryColor: TeamColor) => {
     if (isMockMode) {
-      const newTeam = { id: `t-${Date.now()}`, name, category_id: categoryId, group_name: groupName, manual_rank_priority: 0 };
+      const newTeam = { id: `t-${Date.now()}`, name, category_id: categoryId, group_name: groupName, primary_color: primaryColor, manual_rank_priority: 0 };
       setTeams((prev) => [...prev, newTeam]);
       return;
     }
     try {
       const { data, error } = await supabase
         .from('teams')
-        .insert([{ name, category_id: categoryId, group_name: groupName, manual_rank_priority: 0 }])
+        .insert([{ name, category_id: categoryId, group_name: groupName, primary_color: primaryColor, manual_rank_priority: 0 }])
         .select()
         .single();
       if (error) throw error;
@@ -743,15 +781,15 @@ export default function App() {
     }
   };
 
-  const handleUpdateTeam = async (id: string, name: string, categoryId: string, groupName: string) => {
+  const handleUpdateTeam = async (id: string, name: string, categoryId: string, groupName: string, primaryColor: TeamColor) => {
     if (isMockMode) {
-      setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, name, category_id: categoryId, group_name: groupName } : t)));
+      setTeams((prev) => prev.map((t) => (t.id === id ? { ...t, name, category_id: categoryId, group_name: groupName, primary_color: primaryColor } : t)));
       return;
     }
     try {
       const { data, error } = await supabase
         .from('teams')
-        .update({ name, category_id: categoryId, group_name: groupName })
+        .update({ name, category_id: categoryId, group_name: groupName, primary_color: primaryColor })
         .eq('id', id)
         .select()
         .single();
@@ -964,6 +1002,101 @@ export default function App() {
                 className="flex-1 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white hover:bg-amber-600 transition-all"
               >
                 Avvia lo stesso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Color Conflict Modal */}
+      {colorConflictModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden">
+            
+            {/* Header */}
+            <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/50 px-4 py-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-amber-800 dark:text-amber-300">Conflitto Colori Maglie</h3>
+                <p className="text-[11px] text-amber-600 dark:text-amber-500 leading-tight mt-0.5">
+                  {colorConflictModal.matchLabel}
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Le squadre hanno lo stesso colore di maglia. Assegna una <strong>Pettorina</strong> a una delle due squadre per questa partita.
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <div className="flex flex-col gap-2">
+                  <p className="text-[11px] font-bold text-slate-500 text-center">{colorConflictModal.teamHomeName}</p>
+                  <button
+                    onClick={() => {
+                      doStartLive(colorConflictModal.matchId, undefined, 'yellow', undefined);
+                      setColorConflictModal(null);
+                    }}
+                    className="rounded-lg bg-yellow-400 px-3 py-2 text-xs font-bold text-slate-900 hover:bg-yellow-500 transition-all border border-yellow-500"
+                  >
+                    Pettorina Gialla
+                  </button>
+                  <button
+                    onClick={() => {
+                      doStartLive(colorConflictModal.matchId, undefined, 'orange', undefined);
+                      setColorConflictModal(null);
+                    }}
+                    className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-white hover:bg-orange-600 transition-all border border-orange-600"
+                  >
+                    Pettorina Arancione
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <p className="text-[11px] font-bold text-slate-500 text-center">{colorConflictModal.teamAwayName}</p>
+                  <button
+                    onClick={() => {
+                      doStartLive(colorConflictModal.matchId, undefined, undefined, 'yellow');
+                      setColorConflictModal(null);
+                    }}
+                    className="rounded-lg bg-yellow-400 px-3 py-2 text-xs font-bold text-slate-900 hover:bg-yellow-500 transition-all border border-yellow-500"
+                  >
+                    Pettorina Gialla
+                  </button>
+                  <button
+                    onClick={() => {
+                      doStartLive(colorConflictModal.matchId, undefined, undefined, 'orange');
+                      setColorConflictModal(null);
+                    }}
+                    className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-bold text-white hover:bg-orange-600 transition-all border border-orange-600"
+                  >
+                    Pettorina Arancione
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-2 border-t border-slate-100 dark:border-slate-800 px-4 py-3">
+              <button
+                onClick={() => setColorConflictModal(null)}
+                className="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => {
+                  doStartLive(colorConflictModal.matchId); // Start without bibs
+                  setColorConflictModal(null);
+                }}
+                className="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+              >
+                Ignora
               </button>
             </div>
           </div>

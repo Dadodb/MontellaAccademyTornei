@@ -2,6 +2,7 @@ import React from 'react';
 import type { MatchWithDetails, MatchStatus } from '../types';
 import { Tv, Flame, CheckCircle, Clock } from 'lucide-react';
 import { getCategoryColor } from '../utils/categoryColors';
+import { getTeamColorClasses } from '../utils/teamColors';
 
 interface MatchCardProps {
   match: MatchWithDetails;
@@ -74,8 +75,8 @@ export const MatchCard: React.FC<MatchCardProps> = ({
       {/* Main Match Competitors Row */}
       <div className="py-3 flex items-center justify-between gap-4">
         {/* Team Home */}
-        <div className="flex-1 min-w-0">
-          <p className={`text-xs sm:text-sm truncate ${
+        <div className="flex-1 min-w-0 flex items-center justify-end gap-1.5">
+          <p className={`text-xs sm:text-sm truncate text-right ${
             isHomeWinner 
               ? 'font-bold text-slate-950 dark:text-white' 
               : match.status === 'finished' 
@@ -84,6 +85,12 @@ export const MatchCard: React.FC<MatchCardProps> = ({
           }`}>
             {match.team_home?.name || match.placeholder_home || 'TBA'}
           </p>
+          {match.team_home && (() => {
+            const homeColor = getTeamColorClasses(match.team_home_color ?? match.team_home.primary_color);
+            return (
+              <div className={`w-2.5 h-2.5 rounded-full shrink-0 border ${homeColor.bg} ${homeColor.border}`} title={homeColor.label} />
+            );
+          })()}
         </div>
 
         {/* Score Display */}
@@ -104,8 +111,14 @@ export const MatchCard: React.FC<MatchCardProps> = ({
         </div>
 
         {/* Team Away */}
-        <div className="flex-1 min-w-0 text-right">
-          <p className={`text-xs sm:text-sm truncate ${
+        <div className="flex-1 min-w-0 flex items-center justify-start gap-1.5">
+          {match.team_away && (() => {
+            const awayColor = getTeamColorClasses(match.team_away_color ?? match.team_away.primary_color);
+            return (
+              <div className={`w-2.5 h-2.5 rounded-full shrink-0 border ${awayColor.bg} ${awayColor.border}`} title={awayColor.label} />
+            );
+          })()}
+          <p className={`text-xs sm:text-sm truncate text-left ${
             isAwayWinner 
               ? 'font-bold text-slate-950 dark:text-white' 
               : match.status === 'finished' 

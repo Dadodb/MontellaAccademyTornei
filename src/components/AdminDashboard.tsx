@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import type { Category, Team, Field, Match } from '../types';
+import type { Category, Team, Field, Match, TeamColor } from '../types';
+import { TEAM_COLORS, getTeamColorClasses } from '../utils/teamColors';
 import { Plus, Trash2, Edit2, Check, X, AlertTriangle } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -13,8 +14,8 @@ interface AdminDashboardProps {
   onAddField: (name: string) => Promise<void>;
   onUpdateField: (id: string, name: string) => Promise<void>;
   onDeleteField: (id: string) => Promise<void>;
-  onAddTeam: (name: string, categoryId: string, groupName: string) => Promise<void>;
-  onUpdateTeam: (id: string, name: string, categoryId: string, groupName: string) => Promise<void>;
+  onAddTeam: (name: string, categoryId: string, groupName: string, primaryColor: TeamColor) => Promise<void>;
+  onUpdateTeam: (id: string, name: string, categoryId: string, groupName: string, primaryColor: TeamColor) => Promise<void>;
   onDeleteTeam: (id: string) => Promise<void>;
   onGenerateCalendar: (startTime: string, matchDuration: number, breakDuration: number, generatePlayoffs: boolean) => Promise<void>;
   onDeleteAllMatches: () => Promise<void>;
@@ -61,10 +62,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamCategoryId, setNewTeamCategoryId] = useState('');
   const [newTeamGroupName, setNewTeamGroupName] = useState('A');
+  const [newTeamColor, setNewTeamColor] = useState<TeamColor>('white');
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState('');
   const [editingTeamCategoryId, setEditingTeamCategoryId] = useState('');
   const [editingTeamGroupName, setEditingTeamGroupName] = useState('A');
+  const [editingTeamColor, setEditingTeamColor] = useState<TeamColor>('white');
 
   // Calendar Gen State
   const [genStartTime, setGenStartTime] = useState('15:00');
@@ -163,13 +166,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // --- Handlers for Teams ---
   const handleAddTeamClick = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTeamName.trim() || !newTeamCategoryId) return;
+    if (!newTeamName.trim() || (!newTeamCategoryId && categories.length === 0)) return;
+    
+    const categoryId = newTeamCategoryId || categories[0].id;
     try {
       setError(null);
-      await onAddTeam(newTeamName.trim(), newTeamCategoryId, newTeamGroupName);
+      await onAddTeam(newTeamName.trim(), categoryId, newTeamGroupName, newTeamColor);
       setNewTeamName('');
     } catch (err: any) {
-      setError(err.message || 'Errore creazione squadra');
+      setError(err.message || "Errore aggiunta squadra");
     }
   };
 
@@ -177,7 +182,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (!editingTeamId || !editingTeamName.trim() || !editingTeamCategoryId) return;
     try {
       setError(null);
-      await onUpdateTeam(editingTeamId, editingTeamName.trim(), editingTeamCategoryId, editingTeamGroupName);
+      await onUpdateTeam(editingTeamId, editingTeamName.trim(), editingTeamCategoryId, editingTeamGroupName, editingTeamColor);
       setEditingTeamId(null);
     } catch (err: any) {
       setError(err.message || "Errore aggiornamento squadra");
@@ -453,6 +458,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {groupOptions.map(g => <option key={g} value={g}>Gir. {g}</option>)}
                       </select>
                     )}
+                    <select
+                      value={newTeamColor}
+                      onChange={(e) => setNewTeamColor(e.target.value as TeamColor)}
+                      className="w-10 sm:w-auto rounded-lg border border-slate-300 bg-white px-1 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                      title="Colore Maglia"
+                    >
+                      {Object.entries(TEAM_COLORS).map(([colorKey, colorData]) => (
+                        <option key={colorKey} value={colorKey}>
+                          {colorData.label}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="submit"
                       disabled={!newTeamName.trim()}
@@ -517,15 +534,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   <option key={g} value={g}>{g}</option>
                                 ))}
                               </select>
+                              <select
+                                value={editingTeamColor}
+                                onChange={(e) => setEditingTeamColor(e.target.value as TeamColor)}
+                                className="w-24 rounded border border-slate-300 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                title="Colore Maglia"
+                              >
+                                {Object.entries(TEAM_COLORS).map(([colorKey, colorData]) => (
+                                  <option key={colorKey} value={colorKey}>
+                                    {colorData.label}
+                                  </option>
+                                ))}
+                              </select>
                             </div>
                           ) : (
                             <>
                               <div className="flex flex-col">
-                                <span className="font-medium text-slate-700 dark:text-slate-200">
-                                  {team.name}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-3 h-3 rounded-full border ${getTeamColorClasses(team.primary_color).bg} ${getTeamColorClasses(team.primary_color).border}`} title={`Maglia: ${getTeamColorClasses(team.primary_color).label}`} />
+                                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                                    {team.name}
+                                  </span>
+                                </div>
                                 {(categories.find(c => c.id === team.category_id)?.groups_count || 1) > 1 && (
-                                  <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                  <span className="text-[10px] uppercase tracking-wider text-slate-400 dark:text-slate-500 ml-5">
                                     Girone {team.group_name}
                                   </span>
                                 )}
@@ -537,6 +569,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     setEditingTeamName(team.name);
                                     setEditingTeamCategoryId(team.category_id);
                                     setEditingTeamGroupName(team.group_name || 'A');
+                                    setEditingTeamColor(team.primary_color);
                                   }}
                                   className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-300"
                                 >

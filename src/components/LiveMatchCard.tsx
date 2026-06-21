@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { MatchWithDetails } from '../types';
 import { Plus, Minus, Timer } from 'lucide-react';
 import { getCategoryColor } from '../utils/categoryColors';
+import { getTeamColorClasses } from '../utils/teamColors';
 
 interface LiveMatchCardProps {
   match: MatchWithDetails;
@@ -71,6 +72,9 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({
   const awayInitials = match.team_away?.name ? getInitials(match.team_away.name) : 'T';
   const homeName = match.team_home?.name || 'Squadra Casa';
   const awayName = match.team_away?.name || 'Squadra Trasferta';
+  
+  const homeColor = getTeamColorClasses(match.team_home_color ?? match.team_home?.primary_color);
+  const awayColor = getTeamColorClasses(match.team_away_color ?? match.team_away?.primary_color);
 
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-md border border-slate-100 dark:bg-slate-900 dark:border-slate-800 transition-all duration-300 hover:shadow-lg">
@@ -101,7 +105,7 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({
       <div className="flex items-center justify-center gap-4 py-5 px-4">
         {/* Home */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-sm font-black dark:bg-emerald-950/40 dark:text-emerald-400 shrink-0">
+          <div className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-black shrink-0 border-2 ${homeColor.bg} ${homeColor.text} ${homeColor.border} shadow-sm`} title={`Maglia: ${homeColor.label}`}>
             {homeInitials}
           </div>
           <span className="text-center text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight line-clamp-2 w-full">
@@ -122,7 +126,7 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({
 
         {/* Away */}
         <div className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-100 text-sky-700 text-sm font-black dark:bg-sky-950/40 dark:text-sky-400 shrink-0">
+          <div className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-black shrink-0 border-2 ${awayColor.bg} ${awayColor.text} ${awayColor.border} shadow-sm`} title={`Maglia: ${awayColor.label}`}>
             {awayInitials}
           </div>
           <span className="text-center text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight line-clamp-2 w-full">

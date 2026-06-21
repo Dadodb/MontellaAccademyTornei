@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS teams (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    primary_color TEXT NOT NULL DEFAULT 'slate',
     manual_rank_priority INTEGER NOT NULL DEFAULT 0, -- Used for manual tie-breaker resolution by operator
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     CONSTRAINT unique_team_name_per_category UNIQUE (name, category_id)
@@ -42,6 +43,8 @@ CREATE TABLE IF NOT EXISTS matches (
     team_away_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     score_home INTEGER NOT NULL DEFAULT 0 CHECK (score_home >= 0),
     score_away INTEGER NOT NULL DEFAULT 0 CHECK (score_away >= 0),
+    team_home_color TEXT,
+    team_away_color TEXT,
     scheduled_time TIMESTAMP WITH TIME ZONE NOT NULL,
     started_at TIMESTAMP WITH TIME ZONE,
     status match_status NOT NULL DEFAULT 'scheduled',
