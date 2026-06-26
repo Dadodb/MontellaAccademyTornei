@@ -161,7 +161,16 @@ export default function App() {
     matchId: string;
     matchLabel: string;
     occupiedField: Field;
+    conflictingMatch: MatchWithDetails;
     freeFields: Field[];
+  } | null>(null);
+
+  // Team conflict modal state
+  const [teamConflictModal, setTeamConflictModal] = useState<{
+    matchId: string;
+    matchLabel: string;
+    conflictingMatch: MatchWithDetails;
+    teamName: string;
   } | null>(null);
 
   // Color conflict modal state
@@ -384,10 +393,35 @@ export default function App() {
   };
 
   const handleUpdateStatus = async (matchId: string, status: MatchStatus) => {
-    // Only intercept the 'live' transition for field conflict & color conflict checks
+    // Only intercept the 'live' transition for conflicts checks
     if (status === 'live') {
       const match = matches.find((m) => m.id === matchId);
       if (match) {
+        const matchLabel = `${match.team_home?.name ?? match.placeholder_home ?? 'Casa'} vs ${match.team_away?.name ?? match.placeholder_away ?? 'Trasferta'}`;
+
+        // 0. Check Team Conflict (Is any team already playing?)
+        const teamHomeId = match.team_home_id;
+        const teamAwayId = match.team_away_id;
+        if (teamHomeId || teamAwayId) {
+          const conflictingTeamMatch = matches.find(
+            (m) => m.id !== matchId && m.status === 'live' && 
+            (m.team_home_id === teamHomeId || m.team_away_id === teamHomeId || m.team_home_id === teamAwayId || m.team_away_id === teamAwayId)
+          );
+          
+          if (conflictingTeamMatch) {
+            const conflictingTeamId = (conflictingTeamMatch.team_home_id === teamHomeId || conflictingTeamMatch.team_away_id === teamHomeId) ? teamHomeId : teamAwayId;
+            const teamName = conflictingTeamId === teamHomeId ? (match.team_home?.name ?? 'Casa') : (match.team_away?.name ?? 'Trasferta');
+            
+            setTeamConflictModal({
+              matchId,
+              matchLabel,
+              conflictingMatch: conflictingTeamMatch,
+              teamName,
+            });
+            return; // Stop here
+          }
+        }
+
         // 1. Check Field Conflict
         const conflicting = matches.find(
           (m) => m.id !== matchId && m.field_id === match.field_id && m.status === 'live'
@@ -396,11 +430,11 @@ export default function App() {
           // Find fields that have NO live match
           const busyFieldIds = new Set(matches.filter((m) => m.status === 'live').map((m) => m.field_id));
           const freeFields = fields.filter((f) => !busyFieldIds.has(f.id) && f.id !== match.field_id);
-          const matchLabel = `${match.team_home?.name ?? match.placeholder_home ?? 'Casa'} vs ${match.team_away?.name ?? match.placeholder_away ?? 'Trasferta'}`;
           setFieldConflictModal({
             matchId,
             matchLabel,
             occupiedField: match.field ?? { id: match.field_id, name: match.field_id },
+            conflictingMatch: conflicting,
             freeFields,
           });
           return; // Stop here — wait for modal decision
@@ -922,6 +956,65 @@ export default function App() {
         )}
       </main>
 
+      {/* Team Conflict Modal */}
+      {teamConflictModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden">
+            
+            {/* Header */}
+            <div className="flex items-center gap-3 bg-rose-50 dark:bg-rose-950/30 border-b border-rose-200 dark:border-rose-900/50 px-4 py-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-rose-800 dark:text-rose-300">Squadra già in campo</h3>
+                <p className="text-[11px] text-rose-600 dark:text-rose-500 leading-tight mt-0.5">
+                  {teamConflictModal.matchLabel}
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                La squadra <strong>{teamConflictModal.teamName}</strong> sta già giocando una partita (<strong>{teamConflictModal.conflictingMatch.team_home?.name} vs {teamConflictModal.conflictingMatch.team_away?.name}</strong>).
+                {teamConflictModal.conflictingMatch.started_at && (
+                  <span className="block mt-1">
+                    Questa partita è iniziata da <strong>{Math.floor((Date.now() - new Date(teamConflictModal.conflictingMatch.started_at).getTime()) / 60000)} minuti</strong>.
+                  </span>
+                )}
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-2 border-t border-slate-100 dark:border-slate-800 px-4 py-3">
+              <button
+                onClick={() => setTeamConflictModal(null)}
+                className="flex-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={async () => {
+                  const conflictingMatchId = teamConflictModal.conflictingMatch.id;
+                  const matchIdToStart = teamConflictModal.matchId;
+                  setTeamConflictModal(null);
+                  
+                  // Finish old match then trigger status update for the new one to run checks again
+                  await handleUpdateStatus(conflictingMatchId, 'finished');
+                  await handleUpdateStatus(matchIdToStart, 'live');
+                }}
+                className="flex-1 rounded-lg bg-rose-500 px-3 py-2 text-xs font-bold text-white hover:bg-rose-600 transition-all"
+              >
+                Termina vecchia e Avvia
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Field Conflict Modal */}
       {fieldConflictModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
@@ -946,14 +1039,18 @@ export default function App() {
             {/* Body */}
             <div className="p-4 space-y-3">
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                Sul campo <strong>{fieldConflictModal.occupiedField.name}</strong> è già in corso un'altra partita.
-                Non è possibile avviare <strong>{fieldConflictModal.matchLabel}</strong> sullo stesso campo.
+                Sul campo <strong>{fieldConflictModal.occupiedField.name}</strong> è già in corso un'altra partita: <strong>{fieldConflictModal.conflictingMatch.team_home?.name} vs {fieldConflictModal.conflictingMatch.team_away?.name}</strong>.
+                {fieldConflictModal.conflictingMatch.started_at && (
+                  <span className="block mt-1">
+                    Iniziata da <strong>{Math.floor((Date.now() - new Date(fieldConflictModal.conflictingMatch.started_at).getTime()) / 60000)} minuti</strong>.
+                  </span>
+                )}
               </p>
 
               {fieldConflictModal.freeFields.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                    Campi liberi disponibili:
+                    Scegli un campo libero:
                   </p>
                   {fieldConflictModal.freeFields.map((field) => (
                     <button
@@ -966,7 +1063,7 @@ export default function App() {
                     >
                       <span>{field.name}</span>
                       <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        Usa questo campo
+                        Usa questo
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
                         </svg>
@@ -975,12 +1072,9 @@ export default function App() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 px-3 py-2.5">
-                  <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">
-                    Nessun campo libero disponibile al momento.
-                  </p>
-                  <p className="text-[10px] text-rose-500 dark:text-rose-500 mt-0.5">
-                    Termina una delle partite in corso per liberare un campo.
+                <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 px-3 py-2.5">
+                  <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                    Nessun campo libero disponibile.
                   </p>
                 </div>
               )}
@@ -995,13 +1089,17 @@ export default function App() {
                 Annulla
               </button>
               <button
-                onClick={() => {
-                  doStartLive(fieldConflictModal.matchId);
+                onClick={async () => {
+                  const oldMatchId = fieldConflictModal.conflictingMatch.id;
+                  const newMatchId = fieldConflictModal.matchId;
                   setFieldConflictModal(null);
+                  
+                  await handleUpdateStatus(oldMatchId, 'finished');
+                  await handleUpdateStatus(newMatchId, 'live');
                 }}
                 className="flex-1 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white hover:bg-amber-600 transition-all"
               >
-                Avvia lo stesso
+                Termina e Avvia qui
               </button>
             </div>
           </div>
