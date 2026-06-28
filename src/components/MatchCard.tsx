@@ -82,7 +82,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({
               : match.status === 'finished' 
                 ? 'text-slate-400 dark:text-slate-500' 
                 : 'font-medium text-slate-800 dark:text-slate-200'
-          }`}>
+          } ${!match.team_home_id ? 'italic opacity-60' : ''}`}>
             {match.team_home?.name || match.placeholder_home || 'TBA'}
           </p>
           {match.team_home && (() => {
@@ -124,34 +124,50 @@ export const MatchCard: React.FC<MatchCardProps> = ({
               : match.status === 'finished' 
                 ? 'text-slate-400 dark:text-slate-500' 
                 : 'font-medium text-slate-800 dark:text-slate-200'
-          }`}>
+          } ${!match.team_away_id ? 'italic opacity-60' : ''}`}>
             {match.team_away?.name || match.placeholder_away || 'TBA'}
           </p>
         </div>
       </div>
 
       <div className="flex items-center justify-between border-t border-slate-50 pt-2 dark:border-slate-800/30">
-        {/* Category Tag with color */}
-        {match.category && (() => {
-          const color = getCategoryColor(match.category_id);
-          return (
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color.bg} ${color.text} ${color.darkBg} ${color.darkText}`}>
-              {match.category.name}
+        {/* Category Tag with color & stage info */}
+        <div className="flex items-center gap-1.5">
+          {match.category && (() => {
+            const color = getCategoryColor(match.category_id);
+            return (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${color.bg} ${color.text} ${color.darkBg} ${color.darkText}`}>
+                {match.category.name}
+              </span>
+            );
+          })()}
+          {match.stage !== 'group' && (
+            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 uppercase tracking-wider">
+              {match.stage === 'semi' ? 'Semifinale' : match.stage === 'final' ? 'Finale' : match.stage}
             </span>
-          );
-        })()}
+          )}
+        </div>
 
         {/* Operator Controls inside Calendar */}
         {isAdmin && onUpdateStatus && (
           <div className="flex items-center gap-1.5">
-            {match.status === 'scheduled' && (
-              <button
-                onClick={() => onUpdateStatus(match.id, 'live')}
-                className="rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-black text-white hover:bg-emerald-700 transition"
-              >
-                Avvia Live
-              </button>
-            )}
+            {match.status === 'scheduled' && (() => {
+              const isLocked = match.stage !== 'group' && (!match.team_home_id || !match.team_away_id);
+              return (
+                <button
+                  disabled={isLocked}
+                  onClick={() => onUpdateStatus(match.id, 'live')}
+                  className={`rounded px-2 py-0.5 text-[10px] font-black text-white transition ${
+                    isLocked 
+                      ? 'bg-slate-300 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed' 
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                  title={isLocked ? 'Le squadre per questa eliminatoria non sono ancora state definite.' : 'Avvia Live'}
+                >
+                  Avvia Live
+                </button>
+              );
+            })()}
             {match.status === 'live' && (
               <button
                 onClick={() => onUpdateStatus(match.id, 'finished')}

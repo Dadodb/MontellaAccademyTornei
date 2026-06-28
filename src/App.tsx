@@ -9,6 +9,7 @@ import { CalendarView } from './components/CalendarView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Loader2, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { resolvePlaceholders } from './utils/resolvePlaceholders';
 
 // --- MOCK DATA FOR DEMO MODE ---
 const MOCK_CATEGORIES: Category[] = [
@@ -399,6 +400,12 @@ export default function App() {
       if (match) {
         const matchLabel = `${match.team_home?.name ?? match.placeholder_home ?? 'Casa'} vs ${match.team_away?.name ?? match.placeholder_away ?? 'Trasferta'}`;
 
+        // -1. Block knockout matches with unresolved teams
+        if (match.stage !== 'group' && (!match.team_home_id || !match.team_away_id)) {
+          alert(`Non è possibile avviare questa partita: le squadre non sono ancora state definite.\n\n${match.placeholder_home ?? 'Casa'} e/o ${match.placeholder_away ?? 'Trasferta'} devono prima essere risolti dalle classifiche dei gironi.`);
+          return;
+        }
+
         // 0. Check Team Conflict (Is any team already playing?)
         const teamHomeId = match.team_home_id;
         const teamAwayId = match.team_away_id;
@@ -477,6 +484,55 @@ export default function App() {
       } catch (err: any) {
         alert(`Errore cambio stato: ${err.message}`);
         loadInitialData();
+      }
+    }
+
+    // Auto-resolve placeholders after a match finishes
+    if (status === 'finished') {
+      // Use a slight delay to let state settle before resolving
+      setTimeout(() => {
+        triggerPlaceholderResolution();
+      }, 100);
+    }
+  };
+
+  const triggerPlaceholderResolution = async () => {
+    const resolutions = resolvePlaceholders(matches, teams);
+    if (resolutions.length === 0) return;
+
+    // We'll perform updates one by one (or optimistic update first)
+    setMatches((prev) => {
+      let updated = [...prev];
+      resolutions.forEach((res) => {
+        const teamObj = teams.find((t) => t.id === res.teamId) || null;
+        updated = updated.map((m) => {
+          if (m.id === res.matchId) {
+            if (res.side === 'home') {
+              return { ...m, team_home_id: res.teamId, team_home: teamObj };
+            } else {
+              return { ...m, team_away_id: res.teamId, team_away: teamObj };
+            }
+          }
+          return m;
+        });
+      });
+      return updated;
+    });
+
+    if (!isMockMode) {
+      try {
+        for (const res of resolutions) {
+          const field = res.side === 'home' ? 'team_home_id' : 'team_away_id';
+          const { error } = await supabase
+            .from('matches')
+            .update({ [field]: res.teamId })
+            .eq('id', res.matchId);
+          if (error) throw error;
+        }
+        // Reload all data to ensure exact DB alignment (e.g. foreign keys)
+        loadInitialData();
+      } catch (err: any) {
+        console.error('Errore durante la risoluzione automatica dei segnaposto:', err);
       }
     }
   };

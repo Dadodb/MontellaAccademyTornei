@@ -39,8 +39,11 @@ CREATE TABLE IF NOT EXISTS matches (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
     field_id UUID NOT NULL REFERENCES fields(id) ON DELETE CASCADE,
-    team_home_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    team_away_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    team_home_id UUID REFERENCES teams(id) ON DELETE CASCADE, -- Nullable for knockout stage placeholders
+    team_away_id UUID REFERENCES teams(id) ON DELETE CASCADE, -- Nullable for knockout stage placeholders
+    placeholder_home TEXT,
+    placeholder_away TEXT,
+    stage TEXT NOT NULL DEFAULT 'group',
     score_home INTEGER NOT NULL DEFAULT 0 CHECK (score_home >= 0),
     score_away INTEGER NOT NULL DEFAULT 0 CHECK (score_away >= 0),
     team_home_color TEXT,
@@ -49,7 +52,7 @@ CREATE TABLE IF NOT EXISTS matches (
     started_at TIMESTAMP WITH TIME ZONE,
     status match_status NOT NULL DEFAULT 'scheduled',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    CONSTRAINT check_teams_are_different CHECK (team_home_id <> team_away_id)
+    CONSTRAINT check_teams_are_different CHECK (team_home_id IS NULL OR team_away_id IS NULL OR team_home_id <> team_away_id)
 );
 
 -- 6. Enable Row Level Security (RLS) on all tables
