@@ -496,15 +496,17 @@ export default function App() {
     }
   };
 
-  const triggerPlaceholderResolution = async () => {
-    const resolutions = resolvePlaceholders(matches, teams);
+  const triggerPlaceholderResolution = async (customMatches?: MatchWithDetails[], customTeams?: Team[]) => {
+    const currentMatches = customMatches || matches;
+    const currentTeams = customTeams || teams;
+    const resolutions = resolvePlaceholders(currentMatches, currentTeams);
     if (resolutions.length === 0) return;
 
     // We'll perform updates one by one (or optimistic update first)
     setMatches((prev) => {
       let updated = [...prev];
       resolutions.forEach((res) => {
-        const teamObj = teams.find((t) => t.id === res.teamId) || null;
+        const teamObj = currentTeams.find((t) => t.id === res.teamId) || null;
         updated = updated.map((m) => {
           if (m.id === res.matchId) {
             if (res.side === 'home') {
@@ -752,21 +754,23 @@ export default function App() {
   };
 
   const handleSetTeamPriority = async (teamId: string, priority: number) => {
-    if (isMockMode) {
-      setTeams((prev) =>
-        prev.map((t) => (t.id === teamId ? { ...t, manual_rank_priority: priority } : t))
-      );
-      return;
-    }
+    const updatedTeams = teams.map((t) => (t.id === teamId ? { ...t, manual_rank_priority: priority } : t));
+    setTeams(updatedTeams);
 
-    try {
-      const { error } = await supabase
-        .from('teams')
-        .update({ manual_rank_priority: priority })
-        .eq('id', teamId);
-      if (error) throw error;
-    } catch (err: any) {
-      alert(`Errore salvataggio priorità: ${err.message}`);
+    // Trigger placeholder resolution with the newly calculated teams
+    triggerPlaceholderResolution(matches, updatedTeams);
+
+    if (!isMockMode) {
+      try {
+        const { error } = await supabase
+          .from('teams')
+          .update({ manual_rank_priority: priority })
+          .eq('id', teamId);
+        if (error) throw error;
+      } catch (err: any) {
+        alert(`Errore salvataggio priorità: ${err.message}`);
+        loadInitialData();
+      }
     }
   };
 
