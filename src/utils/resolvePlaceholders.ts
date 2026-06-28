@@ -1,5 +1,5 @@
 import type { MatchWithDetails, Team, Match } from '../types';
-import { calculateStandings } from './standings';
+import { calculateStandings, findPerfectTies } from './standings';
 
 export interface PlaceholderResolution {
   matchId: string;
@@ -143,8 +143,15 @@ function resolveGroupPlaceholder(
   if (!allFinished) return null;
 
   const standings = calculateStandings(groupMatches as Match[], groupTeams);
+  const tiedTeamIds = findPerfectTies(standings);
+
   if (position >= 0 && position < standings.length) {
-    return standings[position].teamId;
+    const candidate = standings[position];
+    if (tiedTeamIds.has(candidate.teamId)) {
+      console.log(`[PlaceholderResolver] Position ${position + 1} of Group ${groupName} is tied. Cannot resolve placeholder yet.`);
+      return null;
+    }
+    return candidate.teamId;
   }
 
   return null;
@@ -175,8 +182,15 @@ function resolveCategoryPlaceholder(
   if (!allFinished) return null;
 
   const standings = calculateStandings(categoryMatches as Match[], categoryTeams);
+  const tiedTeamIds = findPerfectTies(standings);
+
   if (position >= 0 && position < standings.length) {
-    return standings[position].teamId;
+    const candidate = standings[position];
+    if (tiedTeamIds.has(candidate.teamId)) {
+      console.log(`[PlaceholderResolver] Position ${position + 1} of Category is tied. Cannot resolve placeholder yet.`);
+      return null;
+    }
+    return candidate.teamId;
   }
 
   return null;
