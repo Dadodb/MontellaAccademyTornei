@@ -207,11 +207,15 @@ export default function App() {
     try {
       if (isMockMode) {
         // Load mock dataset locally
+        const expandedMockMatches = MOCK_MATCHES_RAW.map(expandMockMatch);
         setCategories(MOCK_CATEGORIES);
         setFields(MOCK_FIELDS);
         setTeams(MOCK_TEAMS);
-        setMatches(MOCK_MATCHES_RAW.map(expandMockMatch));
+        setMatches(expandedMockMatches);
         setLoading(false);
+        setTimeout(() => {
+          triggerPlaceholderResolution(expandedMockMatches, MOCK_TEAMS);
+        }, 200);
         return;
       }
 
@@ -234,10 +238,18 @@ export default function App() {
       if (teamRes.error) throw teamRes.error;
       if (matchRes.error) throw matchRes.error;
 
+      const loadedTeams = teamRes.data || [];
+      const loadedMatches = (matchRes.data as unknown as MatchWithDetails[]) || [];
+
       setCategories(catRes.data || []);
       setFields(fieldRes.data || []);
-      setTeams(teamRes.data || []);
-      setMatches((matchRes.data as unknown as MatchWithDetails[]) || []);
+      setTeams(loadedTeams);
+      setMatches(loadedMatches);
+
+      // Auto-resolve placeholders if they are resolvable on load
+      setTimeout(() => {
+        triggerPlaceholderResolution(loadedMatches, loadedTeams);
+      }, 200);
     } catch (err: any) {
       console.error('Errore caricamento dati:', err);
       setError(err.message || 'Si è verificato un errore nel caricamento dei dati.');
