@@ -604,71 +604,82 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
         
         <div className="space-y-3 bg-slate-100/50 dark:bg-slate-900/30 p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
-          <p className="text-xs text-slate-500">
-            Genera automaticamente il girone all'italiana (Tutti contro Tutti) e i playoff per <strong>TUTTE le categorie</strong> in contemporanea, ottimizzando l'uso dei campi.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col">
-              <label className="text-[10px] text-slate-500 mb-0.5">Orario Inizio</label>
-              <input
-                type="time"
-                value={genStartTime}
-                onChange={(e) => setGenStartTime(e.target.value)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-              />
+          {matches.length > 0 ? (
+            <div className="rounded-lg bg-amber-50 border border-amber-200/60 p-3 text-xs text-amber-800 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-400">
+              <p className="font-bold">Calendario già generato</p>
+              <p className="mt-1">
+                Per generare un nuovo calendario è prima necessario eliminare quello attualmente in corso tramite il pulsante <strong>"Svuota Calendario"</strong> nella sezione "Azioni Massive" qui sotto.
+              </p>
             </div>
-            
-            <div className="flex flex-col">
-              <label className="text-[10px] text-slate-500 mb-0.5">Durata Partita (min)</label>
-              <input
-                type="number"
-                min="5"
-                value={genMatchDuration}
-                onChange={(e) => setGenMatchDuration(parseInt(e.target.value) || 20)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-              />
-            </div>
+          ) : (
+            <>
+              <p className="text-xs text-slate-500">
+                Genera automaticamente il girone all'italiana (Tutti contro Tutti) e i playoff per <strong>TUTTE le categorie</strong> in contemporanea, ottimizzando l'uso dei campi.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className="text-[10px] text-slate-500 mb-0.5">Orario Inizio</label>
+                  <input
+                    type="time"
+                    value={genStartTime}
+                    onChange={(e) => setGenStartTime(e.target.value)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
+                
+                <div className="flex flex-col">
+                  <label className="text-[10px] text-slate-500 mb-0.5">Durata Partita (min)</label>
+                  <input
+                    type="number"
+                    min="5"
+                    value={genMatchDuration}
+                    onChange={(e) => setGenMatchDuration(parseInt(e.target.value) || 20)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
 
-            <div className="flex flex-col">
-              <label className="text-[10px] text-slate-500 mb-0.5">Pausa tra partite (min)</label>
-              <input
-                type="number"
-                min="0"
-                value={genBreakDuration}
-                onChange={(e) => setGenBreakDuration(parseInt(e.target.value) || 0)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-              />
-            </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] text-slate-500 mb-0.5">Pausa tra partite (min)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={genBreakDuration}
+                    onChange={(e) => setGenBreakDuration(parseInt(e.target.value) || 0)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
 
-            <div className="flex items-center gap-2 mt-4 col-span-2">
-              <input
-                type="checkbox"
-                id="genPlayoffs"
-                checked={genPlayoffs}
-                onChange={(e) => setGenPlayoffs(e.target.checked)}
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              <label htmlFor="genPlayoffs" className="text-xs text-slate-600 dark:text-slate-400">
-                Includi Partite Segnaposto per Fasi Finali
-              </label>
-            </div>
-          </div>
-          
-          <button
-            onClick={async () => {
-              if (categories.length === 0 || teams.length === 0) { setError("Aggiungi categorie e squadre prima di generare"); return; }
-              try {
-                setError(null);
-                await onGenerateCalendar(genStartTime, genMatchDuration, genBreakDuration, genPlayoffs);
-                alert("Calendario Globale generato con successo!");
-              } catch (err: any) {
-                setError(err.message || 'Errore durante la generazione');
-              }
-            }}
-            className="w-full mt-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700"
-          >
-            Genera Calendario Globale
-          </button>
+                <div className="flex items-center gap-2 mt-4 col-span-2">
+                  <input
+                    type="checkbox"
+                    id="genPlayoffs"
+                    checked={genPlayoffs}
+                    onChange={(e) => setGenPlayoffs(e.target.checked)}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <label htmlFor="genPlayoffs" className="text-xs text-slate-600 dark:text-slate-400">
+                    Includi Partite Segnaposto per Fasi Finali
+                  </label>
+                </div>
+              </div>
+              
+              <button
+                onClick={async () => {
+                  if (categories.length === 0 || teams.length === 0) { setError("Aggiungi categorie e squadre prima di generare"); return; }
+                  try {
+                    setError(null);
+                    await onGenerateCalendar(genStartTime, genMatchDuration, genBreakDuration, genPlayoffs);
+                    alert("Calendario Globale generato con successo!");
+                  } catch (err: any) {
+                    setError(err.message || 'Errore durante la generazione');
+                  }
+                }}
+                className="w-full mt-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700"
+              >
+                Genera Calendario Globale
+              </button>
+            </>
+          )}
         </div>
       </section>
 
