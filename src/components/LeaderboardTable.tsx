@@ -22,7 +22,11 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({
     const teamA = standings[index];
     const teamB = standings[index + 1];
     
+    // Only allow manual tie resolution if both teams are detected as tied in the active ties set
+    // (which is only populated when the group matches are completely finished).
     const isPerfectTie =
+      tiedTeamIds.has(teamA.teamId) &&
+      tiedTeamIds.has(teamB.teamId) &&
       teamA.points === teamB.points &&
       teamA.goalDifference === teamB.goalDifference &&
       teamA.goalsFor === teamB.goalsFor &&
