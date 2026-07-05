@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import type { Category, Team, Match, TeamStanding } from '../types';
 import { calculateStandings, findPerfectTies } from '../utils/standings';
 import { LeaderboardTable } from './LeaderboardTable';
-import { Trophy, HelpCircle, X, ShieldAlert } from 'lucide-react';
+import { BracketView } from './BracketView';
+import { Trophy, HelpCircle, X, ShieldAlert, List, GitFork } from 'lucide-react';
 import { getCategoryColor } from '../utils/categoryColors';
 
 interface LeaderboardViewProps {
@@ -22,6 +23,8 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [tieBreakerTeams, setTieBreakerTeams] = useState<{ teamA: TeamStanding; teamB: TeamStanding } | null>(null);
+  const [activeView, setActiveView] = useState<'standings' | 'bracket'>('standings');
+  const [manuallyToggled, setManuallyToggled] = useState<boolean>(false);
 
   // Set default category on load
   useEffect(() => {
@@ -35,6 +38,26 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   // Filter teams and matches for the selected category
   const categoryTeams = teams.filter((t) => t.category_id === selectedCategory);
   const categoryMatches = matches.filter((m) => m.category_id === selectedCategory);
+
+  // Determine if group phase is complete (all group matches finished)
+  const groupMatches = categoryMatches.filter((m) => m.stage === 'group');
+  const groupPhaseComplete = groupMatches.length > 0 && groupMatches.every((m) => m.status === 'finished');
+
+  // Auto-switch view based on group phase completion state
+  useEffect(() => {
+    if (!manuallyToggled) {
+      if (groupPhaseComplete) {
+        setActiveView('bracket');
+      } else {
+        setActiveView('standings');
+      }
+    }
+  }, [groupPhaseComplete, selectedCategory, manuallyToggled]);
+
+  // Reset manual toggle tracking on category switch to re-run auto-detection
+  useEffect(() => {
+    setManuallyToggled(false);
+  }, [selectedCategory]);
 
   // Group teams by group_name
   const groupedTeams: Record<string, Team[]> = {};
@@ -62,6 +85,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
     
     // Close modal
     setTieBreakerTeams(null);
+  };
+
+  const handleToggleView = (view: 'standings' | 'bracket') => {
+    setActiveView(view);
+    setManuallyToggled(true);
   };
 
   return (
@@ -93,10 +121,44 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         </div>
       </div>
 
-      {/* Standings Table container */}
+      {/* Sub-navigation tabs: Standings vs Bracket */}
+      {selectedCategory && categoryMatches.some(m => m.stage !== 'group') && (
+        <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-slate-800">
+          <button
+            onClick={() => handleToggleView('standings')}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded py-1.5 text-[10px] font-bold uppercase transition-all ${
+              activeView === 'standings'
+                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <List className="h-3 w-3" />
+            Classifiche
+          </button>
+          <button
+            onClick={() => handleToggleView('bracket')}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded py-1.5 text-[10px] font-bold uppercase transition-all ${
+              activeView === 'bracket'
+                ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white'
+                : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            }`}
+          >
+            <GitFork className="h-3 w-3" />
+            Fase Finale
+          </button>
+        </div>
+      )}
+
+      {/* Standings Table / Bracket container */}
       {selectedCategory ? (
         <div className="space-y-4">
-          {groups.length > 0 ? (
+          {activeView === 'bracket' ? (
+            <BracketView
+              categoryId={selectedCategory}
+              matches={categoryMatches}
+              teams={categoryTeams}
+            />
+          ) : groups.length > 0 ? (
             <div className="space-y-6">
               {groups.map(groupName => {
                 const groupTeams = groupedTeams[groupName];
