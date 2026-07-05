@@ -21,7 +21,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedField, setSelectedField] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | MatchStatus>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | MatchStatus>('scheduled');
 
   // Filter matches
   const filteredMatches = matches
