@@ -741,12 +741,19 @@ export default function App() {
       const { error: matchError } = await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       if (matchError) throw matchError;
 
-      // 2. Reset manual_rank_priority for teams that have a priority set
-      const { error: teamError } = await supabase
-        .from('teams')
-        .update({ manual_rank_priority: 0 })
-        .gt('manual_rank_priority', 0);
-      if (teamError) throw teamError;
+      // 2. Reset manual_rank_priority locally
+      setTeams(prev => prev.map(t => ({ ...t, manual_rank_priority: 0 })));
+
+      // 3. Reset manual_rank_priority on Supabase by updating the teams with priority > 0
+      const teamsToReset = teams.filter(t => t.manual_rank_priority > 0);
+      if (teamsToReset.length > 0) {
+        const teamIds = teamsToReset.map(t => t.id);
+        const { error: teamError } = await supabase
+          .from('teams')
+          .update({ manual_rank_priority: 0 })
+          .in('id', teamIds);
+        if (teamError) throw teamError;
+      }
 
       loadInitialData();
     } catch (error) { throw error; }
