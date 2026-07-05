@@ -730,10 +730,21 @@ export default function App() {
     }
   };
   const handleDeleteAllMatches = async () => {
-    if (isMockMode) { alert("Modalità Demo: I dati non vengono realmente cancellati."); setMatches([]); return; }
+    if (isMockMode) {
+      alert("Modalità Demo: I dati non vengono realmente cancellati.");
+      setMatches([]);
+      setTeams(prev => prev.map(t => ({ ...t, manual_rank_priority: 0 })));
+      return;
+    }
     try {
-      const { error } = await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      if (error) throw error;
+      // 1. Delete matches
+      const { error: matchError } = await supabase.from('matches').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (matchError) throw matchError;
+
+      // 2. Reset manual_rank_priority for all teams
+      const { error: teamError } = await supabase.from('teams').update({ manual_rank_priority: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
+      if (teamError) throw teamError;
+
       loadInitialData();
     } catch (error) { throw error; }
   };
