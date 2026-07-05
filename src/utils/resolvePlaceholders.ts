@@ -53,27 +53,28 @@ export function resolvePlaceholders(
 ): PlaceholderResolution[] {
   const resolutions: PlaceholderResolution[] = [];
 
-  const unresolvedMatches = allMatches.filter(
-    (m) => m.stage !== 'group' && (m.team_home_id === null || m.team_away_id === null)
+  // Check all matches in knockout stage that have placeholders
+  const playoffMatches = allMatches.filter(
+    (m) => m.stage !== 'group' && (m.placeholder_home || m.placeholder_away)
   );
 
-  console.log('[PlaceholderResolver] Found unresolved matches:', unresolvedMatches.length);
+  console.log('[PlaceholderResolver] Checking playoff matches:', playoffMatches.length);
 
-  for (const match of unresolvedMatches) {
-    if (match.team_home_id === null && match.placeholder_home) {
+  for (const match of playoffMatches) {
+    if (match.placeholder_home) {
       console.log(`[PlaceholderResolver] Checking home placeholder "${match.placeholder_home}" for match ${match.id}`);
       const teamId = resolveOnePlaceholder(match.placeholder_home, match.category_id, allMatches, allTeams);
-      if (teamId) {
-        console.log(`[PlaceholderResolver] Resolved home to team ID ${teamId}`);
+      if (teamId !== null && teamId !== match.team_home_id) {
+        console.log(`[PlaceholderResolver] Mismatch found! Home should be ${teamId} (currently ${match.team_home_id})`);
         resolutions.push({ matchId: match.id, side: 'home', teamId });
       }
     }
 
-    if (match.team_away_id === null && match.placeholder_away) {
+    if (match.placeholder_away) {
       console.log(`[PlaceholderResolver] Checking away placeholder "${match.placeholder_away}" for match ${match.id}`);
       const teamId = resolveOnePlaceholder(match.placeholder_away, match.category_id, allMatches, allTeams);
-      if (teamId) {
-        console.log(`[PlaceholderResolver] Resolved away to team ID ${teamId}`);
+      if (teamId !== null && teamId !== match.team_away_id) {
+        console.log(`[PlaceholderResolver] Mismatch found! Away should be ${teamId} (currently ${match.team_away_id})`);
         resolutions.push({ matchId: match.id, side: 'away', teamId });
       }
     }
@@ -203,7 +204,11 @@ function resolveSemifinalPlaceholder(
 ): string | null {
   const semis = allMatches
     .filter((m) => m.category_id === categoryId && m.stage === 'semi')
-    .sort((a, b) => new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime());
+    .sort((a, b) => {
+      const timeDiff = new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime();
+      if (timeDiff !== 0) return timeDiff;
+      return a.id.localeCompare(b.id);
+    });
 
   const targetSemi = semis[semiNumber - 1];
   if (!targetSemi) {

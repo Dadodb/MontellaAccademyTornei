@@ -107,7 +107,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 );
                 
                 const standings = calculateStandings(groupMatches, groupTeams);
-                const tiedTeamIds = findPerfectTies(standings);
+                
+                // Only show ties when ALL group matches are finished (qualification phase is complete).
+                // Otherwise all teams at 0 would be flagged as tied before any match is played.
+                const allGroupMatchesFinished = groupMatches.length > 0 && groupMatches.every(m => m.status === 'finished');
+                const tiedTeamIds = allGroupMatchesFinished ? findPerfectTies(standings) : new Set<string>();
                 const isMultiGroup = (activeCategory?.groups_count || 1) > 1;
 
                 return (
